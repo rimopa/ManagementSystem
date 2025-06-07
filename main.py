@@ -263,7 +263,6 @@ def ManageBookingsWindow():
             menu.delete(0, "end")
             # only available if not yet accepted:
             if bkng["state"] == 0:
-                # Cancelar: enviando el id de la reserva, que está en la posición 0 de a
                 menu.add_command(label="Cancelar",
                                  command=lambda: cancelar(bkng["id"]))
                 if not cAdmin:
@@ -546,9 +545,6 @@ cAdmin = 0
 
 # test:
 BookingWindow()
-cUser = "hacker"
-ManageBookingsWindow()
-
 
 root.mainloop()
 
@@ -588,7 +584,6 @@ root.mainloop()
 # 2-user: reservar / cancelar (administrar reservas propias)
 #
 # un mensaje "* perdiste treinta mil dólares *"
-# datos = [reserva[id,usuario,estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada),
 # datos = [reserva[id,usuario,estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada, 4=en realización),
 # nombres, edad, comida (0=sin 1=con "string/comentario"=dieta específica),
 # tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
