@@ -140,7 +140,6 @@ def formatBookings(bkngs):
 def tkWindow(title, grid=True, geometry=None, resizable: bool = False):
     a = Tk()
     if resizable == True:
-    else:
         a.resizable(True, True)
     else:
         a.resizable(False, False)
