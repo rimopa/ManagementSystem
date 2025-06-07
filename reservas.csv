@@ -1,0 +1,4 @@
+id,username,state,names,ages,food,roomType,startDate,finishDate,contact,comment
+0,gaston,3,Gastón Durand;Gianni Garibotti,17;15,burguers,1,2025-04-11,2025-05-11,+5493517015929,les gustan las hamburguesas
+1,hacker,0,Lorenzo Sánchez;Ismalol Hayno,18;17,0,3,2024-05-25,2024-05-26,+5493512297549,son negros
+2,hacker,3,bro,18;17,1,1,2024-06-25,2024-06-26,+5493512297549,white
