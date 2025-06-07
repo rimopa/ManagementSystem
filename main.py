@@ -176,29 +176,6 @@ def logInWindow():
     uspw.bind("<Return>", checkUsPw)
 
 
-def logIn(user, userIdx):
-    global cUser, cAdmin, us
-    cUser = user
-    if us[userIdx]["admin"]:
-        cAdmin = 1
-    else:
-        cAdmin = 0
-    print("iniciaste sesión como " + cUser)
-    logInBtt.grid_forget()
-    bkgsBtt.grid()
-    signOutBtt.grid()
-    welcomeMsg.set("Bienvenido, " + cUser)
-
-
-def signOut():
-    global cUser
-    cUser = ""
-    signOutBtt.grid_forget()
-    bkgsBtt.grid_forget()
-    logInBtt.grid()
-    welcomeMsg.set("Bienvenido")
-
-
 def newUserWindow():
     def tryNewUs(*args):
         givenUser = usStr.get()
