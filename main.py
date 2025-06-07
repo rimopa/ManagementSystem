@@ -226,56 +226,30 @@ def newUserWindow():
 def ManageBookingsWindow():
     global cUser, cAdmin
 
-    def cancel(i, f):
+    def cancelar(id):
         if confirmationWindow("¿Está seguro de que desea cancelar su reserva? Esta acción no puede revertirse."):
-            # modifyCsvRow("reservas.csv", i, field="state", newValue=3)
-            for w in f.winfo_children():
-                if int(w.grid_info().get("column", -1)) == f:
-                    w.destroy()
+            modifyCsvRow("reservas.csv", newValue=3,
+                         conditionField="id", conditionValue=id, field="state")
 
-    def aceptar(i):
-        modifyCsvRow("reservas.csv", i, field="state", newValue=1)
+    def aceptar(id):
+        modifyCsvRow("reservas.csv", conditionField="id",
+                     conditionValue=id, field="state", newValue=1)
 
-    def rechazar(i):
-        modifyCsvRow("reservas.csv", i, field="state", newValue=3)
+    def rechazar(id):
+        modifyCsvRow("reservas.csv", conditionField="id",
+                     conditionValue=id, field="state", newValue=3)
 
-    bw = tkWindow("Administrar reservas")
-    mainframe = ttk.Frame(bw, padding="3 3 12 12")
-    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-    if cAdmin:
-        userBookings = bookings
-    else:
-        userBookings = getResrevas(cUser)
-    dataGrid = Frame(mainframe)
-    dataGrid.pack()
-    i = 0
-    for bkng in userBookings:
-        print(bkng)
-        row = i
-        # i2 is i for elements of b
-        clmn = 0
-        for a in bkng.values():
-            # Create labels only for third and following elements of b
-            if clmn >= 2:
-                l = Label(dataGrid, text=a, wraplength=200)
-                l.grid(row=row, column=clmn, padx=10, pady=20)
-                if bkng["state"] == 3:
-                    l.config(bg="red", fg="white")
-            clmn += 1
-        if cAdmin or bkng["state"] == 0:
-            opts = ttk.Menubutton(dataGrid, text="Opciones")
-            opts.grid(row=row, column=clmn, padx=10)
-
-            # Set `tearoff=0` to remove the dashed line
-            menu = Menu(dataGrid, tearoff=0)
-            opts["menu"] = menu  # Link the menu to the Menubutton
-
-            # Add options to the menu with commands
+    def show_menu(event):
+        row_id = tree.identify_row(event.y)
+        if row_id:
+            row_id = int(row_id)
+            bkng = userBookings[row_id]
+            menu.delete(0, "end")
+            # only available if not yet accepted:
             if bkng["state"] == 0:
                 # Cancelar: enviando el id de la reserva, que está en la posición 0 de a
                 menu.add_command(label="Cancelar",
-                                 command=lambda: cancel(bkng["id"], row))
-                # only available if not yet accepted:
+                                 command=lambda: cancelar(bkng["id"]))
                 if not cAdmin:
                     menu.add_command(label="Modificar",
                                      command=lambda: BookingWindow(modify=bkng["id"]))
@@ -284,21 +258,35 @@ def ManageBookingsWindow():
                     label="Aceptar", command=lambda: aceptar(bkng["id"]))
                 menu.add_command(label="Rechazar",
                                  command=lambda: rechazar(bkng["id"]))
-        i += 1
+            menu.post(event.x_root, event.y_root)
 
-    headings = ("Personas", "Edades", "Comida", "Tipo de habitación",
+    bw = tkWindow("Administrar reservas")
+    mainframe = ttk.Frame(bw, padding="3 3 12 12")
+    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+    if cAdmin:
+        userBookings = bookings
+    else:
+        userBookings = getResrevas(cUser)
+
+    columns = ("state", "names", "ages", "food",
+               "roomType", "startDate", "finishDate")
+    headings = ("Estado", "Personas", "Edades", "Comida", "Tipo de habitación",
                 "Fecha de inicio", "Fecha de finalización")
-    columns = ("names", "ages", "food", "roomType", "startDate", "finishDate")
-
     tree = ttk.Treeview(mainframe, columns=columns, show="headings")
     for i in range(len(headings)):
         tree.heading(i, text=headings[i])
         tree.column(i, width=100, anchor="center")
 
-    for bkng in userBookings:
-        tree.insert("", END, values=[bkng.get(col, "") for col in columns])
+    menu = Menu(tree, tearoff=0)
+
+    row = 0
+    for bkng in formatBookings(userBookings):
+        tree.insert("", END, iid=row, values=[
+                    bkng.get(col, "") for col in columns])
+        row += 1
 
     tree.pack(expand=True, fill="both")
+    tree.bind("<Button-3>", show_menu)
 
 
 def BookingWindow(modify=False):
