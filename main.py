@@ -107,17 +107,40 @@ def tkWindow(title, grid=True, geometry="0x0", resizable: bool = False):
     return a
 
 
+def logIn(user, userId):
+    global cUser, cAdmin, us
+    cUser = user
+    if us[userId]["admin"]:
+        cAdmin = 1
+    else:
+        cAdmin = 0
+    print("iniciaste sesión como " + cUser)
+    logInBtt.grid_forget()
+    bkgsBtt.grid()
+    signOutBtt.grid()
+    welcomeMsg.set("Bienvenido, " + cUser)
+
+
+def signOut():
+    global cUser
+    cUser = ""
+    signOutBtt.grid_forget()
+    bkgsBtt.grid_forget()
+    logInBtt.grid()
+    welcomeMsg.set("Bienvenido")
+
+
 def logInWindow():
     def checkUsPw(event=""):
         global cUser, us
         givenUser = usStr.get()
         givenPassword = pwStr.get()
-        userIdx = indexOfUser(givenUser)
-        print(us[userIdx]["password"])
-        if userIdx != None:
-            if givenPassword == us[userIdx]["password"]:
-                cUser = us[userIdx]["username"]
-                logIn(cUser, userIdx)
+        userId = indexOfUser(givenUser)
+        print(us[userId]["password"])
+        if userId != None:
+            if givenPassword == us[userId]["password"]:
+                cUser = us[userId]["username"]
+                logIn(cUser, userId)
                 uspw.destroy()
             else:
                 InformativeWindow("Contraseña incorrecta. Intente nuevamente")
