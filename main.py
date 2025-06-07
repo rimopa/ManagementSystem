@@ -12,6 +12,13 @@ except ModuleNotFoundError:
 # date.today()
 os.system("cls")
 
+# <consts:
+MAX_YEAR = date.today().year+5
+MAX_ROOMS = 48
+FOOD_PRICE_PER_NIGHT = 5000
+ROOM_PRICE_PER_NIGHT = (60000, 85000, 50000, 55000)
+# consts>
+
 # <defs:
 
 
@@ -414,7 +421,8 @@ def BookingWindow(modify=False):
     food.grid(column=1, row=0, sticky=(N, E, W))
     foodBool = BooleanVar(food)
     foodComment = StringVar()
-    ttk.Label(food, text="¿Desea incluir desayuno? El coste es de").pack()
+    ttk.Label(
+        food, text=f"¿Desea incluir desayuno? El coste es de {FOOD_PRICE_PER_NIGHT} por noche", wraplength=150).pack()
     ttk.Checkbutton(food, variable=foodBool, text="Incluir desayuno",
                     onvalue=True, offvalue=False, command=summon_food).pack()
     foodLbl = ttk.Label(
