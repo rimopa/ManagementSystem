@@ -15,17 +15,29 @@ os.system("cls")
 # <defs:
 
 
-def modifyCsvRow(filepath, rowI, newValue, field=None):
+def modifyCsvRow(filepath, newValue, rowI=None, conditionField=None, conditionValue=None, field=None):
     tPath = "temp_" + filepath
     with open(filepath, 'r', encoding='utf-8') as inp, open(tPath, 'w', encoding='utf-8', newline='') as out:
         reader = list(csv.DictReader(inp))
         writer = csv.DictWriter(
             out, fieldnames=reader[0].keys())
-        if field is None:
-            reader[rowI] = newValue
+        if conditionField is None and conditionValue is None and rowI:
+            if field is None:
+                reader[rowI] = newValue
+            else:
+                reader[rowI][field] = newValue
+        elif rowI is None and conditionField and conditionValue:
+            for row in reader:
+                if row[conditionField] == str(conditionValue):
+                    if field is None:
+                        row = newValue
+                    else:
+                        row[field] = newValue
         else:
-            reader[rowI][field] = newValue
+            print(
+                f"Couldn't resolve modifyCsvRow(filepath={filepath}, newValue={newValue}, rowI={rowI},conditionField={conditionField}, conditionValue={conditionValue}, field={field}) as both or nor row identifier and condition identifier were provided.")
 
+        writer.writeheader()
         writer.writerows(reader)
 
     os.replace(tPath, filepath)
