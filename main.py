@@ -1,9 +1,15 @@
-import csv
-import os
-from tkinter import *
-from tkinter import ttk
-import datetime
-# datetime.date.today()
+try:
+    import os
+    from tkinter import *
+    from tkinter import ttk
+    import csv
+    import copy
+    from datetime import date
+except ModuleNotFoundError:
+    print("One or more modules not found")
+    print("Aborting...")
+    raise SystemExit
+# date.today()
 os.system("cls")
 
 # <defs:
