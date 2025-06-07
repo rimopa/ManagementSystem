@@ -98,7 +98,6 @@ def getResrevas(user):
     return [bkng for bkng in bookings if bkng.get("username") == user]
 
 
-def tkWindow(title, grid=True, geometry="0x0", resizable: bool = False):
 def formatBookings(bkngs):
     a = copy.deepcopy(bkngs)
     for b in a:
@@ -141,15 +140,16 @@ def formatBookings(bkngs):
 def tkWindow(title, grid=True, geometry=None, resizable: bool = False):
     a = Tk()
     if resizable == True:
-        a.resizable(False, False)
     else:
         a.resizable(True, True)
+    else:
+        a.resizable(False, False)
     a.title(title)
     a.iconbitmap(r"icon.ico")
     if grid:
         a.columnconfigure(0, weight=1)
         a.rowconfigure(0, weight=1)
-    if geometry != "0x0":
+    if geometry is not None:
         a.geometry(geometry)
     return a
 
