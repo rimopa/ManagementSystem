@@ -99,6 +99,46 @@ def getResrevas(user):
 
 
 def tkWindow(title, grid=True, geometry="0x0", resizable: bool = False):
+def formatBookings(bkngs):
+    a = copy.deepcopy(bkngs)
+    for b in a:
+        # state:
+        if b["state"] == 0:
+            b["state"] = "Por aceptar"
+        elif b["state"] == 1:
+            b["state"] = "Aceptada/En espera"
+        elif b["state"] == 2:
+            b["state"] = "Terminada"
+        elif b["state"] == 3:
+            b["state"] = "Rechazada"
+        elif b["state"] == 4:
+            b["state"] = "Activa (realizándose)"
+        # names:
+        b["names"] = ", ".join(b["names"])
+        # ages:
+        b["ages"] = ", ".join(b["ages"])
+        # food:
+        if b["food"] == "1":
+            b["food"] = "Incluida"
+        elif b["food"] == "0":
+            b["food"] = "No incluida"
+        elif b["food"]:
+            b["food"] = "Incluida. " + b["food"]
+        # roomType:
+        if b["roomType"] == 0:
+            b["roomType"] = "Privado simple"
+        elif b["roomType"] == 1:
+            b["roomType"] = "Privado doble"
+        elif b["roomType"] == 2:
+            b["roomType"] = "Compartido simple"
+        elif b["roomType"] == 3:
+            b["roomType"] = "Compartido doble"
+        # startDate:
+        # finishDate:
+    return a
+
+
+def tkWindow(title, grid=True, geometry=None, resizable: bool = False):
     a = Tk()
     if resizable == True:
         a.resizable(False, False)
