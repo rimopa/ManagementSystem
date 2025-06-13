@@ -4,7 +4,7 @@ try:
     from tkinter import ttk
     import csv
     import copy
-    from datetime import date
+    from datetime import date, datetime
 except ModuleNotFoundError:
     print("One or more modules not found")
     print("Aborting...")
@@ -87,9 +87,8 @@ def addCsv(filepath, *args):
 
 def indexOfUser(user):
     try:
-        return next(i for i, a in enumerate(us) if a["username"] == user)
+        return next((i for i, a in enumerate(us) if a["username"] == user), None)
     except ValueError:
-        print("no está el usuario")
         return None
 
 
@@ -145,11 +144,11 @@ def tkWindow(title, grid=True, geometry=None, resizable: bool = False):
         a.resizable(False, False)
     a.title(title)
     a.iconbitmap(r"icon.ico")
+    if geometry is not None:
+        a.geometry(geometry)
     if grid:
         a.columnconfigure(0, weight=1)
         a.rowconfigure(0, weight=1)
-    if geometry is not None:
-        a.geometry(geometry)
     return a
 
 
@@ -167,7 +166,7 @@ def logIn(user, userId):
     welcomeMsg.set("Bienvenido, " + cUser)
 
 
-def signOut():
+def logOut():
     global cUser
     cUser = ""
     signOutBtt.grid_forget()
@@ -181,52 +180,59 @@ def logInWindow():
         global cUser, us
         givenUser = usStr.get()
         givenPassword = pwStr.get()
-        userId = indexOfUser(givenUser)
-        print(us[userId]["password"])
-        if userId != None:
-            if givenPassword == us[userId]["password"]:
-                cUser = us[userId]["username"]
-                logIn(cUser, userId)
-                uspw.destroy()
-            else:
-                InformativeWindow("Contraseña incorrecta. Intente nuevamente")
+        if "," in givenPassword+givenUser:
+            InformativeWindow(
+                'No incluya comas (",") en el usuario ni contraseña')
         else:
-            # inputs quiere nuevo usuario?
-            if confirmationWindow(
-                    "Usuario no encntrado. ¿Quiere crear un nuevo usuario?"):
-                newUserWindow()
+            userId = indexOfUser(givenUser)
+            if userId != None:
+                if givenPassword == us[userId]["password"]:
+                    cUser = us[userId]["username"]
+                    logIn(cUser, userId)
+                    uspw.destroy()
+                else:
+                    InformativeWindow(
+                        "Contraseña incorrecta. Intente nuevamente")
+            else:
+                # inputs quiere nuevo usuario?
+                if confirmationWindow("Usuario no encontrado. ¿Quiere crear un nuevo usuario?"):
+                    newUserWindow()
+    uspw = tkWindow("Iniciar sesión", grid=True, geometry="300x300")
 
-    uspw = tkWindow("Iniciar sesión", geometry=("300x300"))
+    uspw = ttk.Frame(uspw, padding="3 3 12 12")
+    uspw.grid(column=0, row=0, sticky=(N, W, E, S))
 
-    mainframe = ttk.Frame(uspw, padding="3 3 12 12")
-    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
+    usStr = StringVar(uspw)
+    pwStr = StringVar(uspw)
 
-    usStr = StringVar(mainframe)
-    pwStr = StringVar(mainframe)
-
-    ttk.Label(mainframe, text="Usuario").pack()
-    ttk.Entry(mainframe, textvariable=usStr).pack()
-    ttk.Label(mainframe, text="Contraseña").pack()
-    ttk.Entry(mainframe, textvariable=pwStr, show="*").pack()
-    ttk.Button(mainframe, text='Iniciar sesión',
+    ttk.Label(uspw, text="Usuario").pack()
+    ttk.Entry(uspw, textvariable=usStr).pack()
+    ttk.Label(uspw, text="Contraseña").pack()
+    ttk.Entry(uspw, textvariable=pwStr, show="*").pack()
+    ttk.Button(uspw, text='Iniciar sesión',
                command=checkUsPw).pack(pady=10)
-    ttk.Button(mainframe, text="¿Primera vez? Cree unnuevo usuario",
+    ttk.Button(uspw, text="¿Primera vez? Cree un nuevo usuario",
                command=newUserWindow).pack()
     uspw.bind("<Return>", checkUsPw)
 
 
-def newUserWindow():
+def newUserWindow(self):
     def tryNewUs(*args):
         givenUser = usStr.get()
         givenPassword = pwStr.get()
-        if indexOfUser(givenUser) == None:
-            addCsv("users.csv", givenUser, givenPassword, 0)
-            InformativeWindow("Usuario creado. Inicie sesión ahora.")
-            newUsw.destroy()
+        if "," in givenPassword+givenUser:
+            newUsw.wait_window(InformativeWindow(
+                'No incluya comas (",") en el usuario ni contraseña'))
         else:
-            InformativeWindow("El usuario ya existe")
+            if indexOfUser(givenUser) == None:
+                addCsv("users.csv", givenUser, givenPassword, 0)
+                InformativeWindow("Usuario creado. Inicie sesión ahora.")
+                newUsw.destroy()
+                self.pack()
+            else:
+                InformativeWindow("El usuario ya existe")
 
-    newUsw = tkWindow("Crear nuevo usuario", geometry="300x300")
+    newUsw = tkWindow("Crear nuevo usuario", grid=True, geometry="300x300")
     mainframe = ttk.Frame(newUsw, padding="3 3 12 12")
     mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
     usStr = StringVar(mainframe)
@@ -255,6 +261,10 @@ def ManageBookingsWindow():
         modifyCsvRow("reservas.csv", conditionField="id",
                      conditionValue=id, field="state", newValue=3)
 
+    def modify(id):
+
+        bw.wait_window(BookingWindow(modify=id))
+
     def show_menu(event):
         row_id = tree.identify_row(event.y)
         if row_id:
@@ -267,7 +277,7 @@ def ManageBookingsWindow():
                                  command=lambda: cancelar(bkng["id"]))
                 if not cAdmin:
                     menu.add_command(label="Modificar",
-                                     command=lambda: BookingWindow(modify=bkng["id"]))
+                                     command=lambda: modify(bkng["id"]))
             if cAdmin:
                 menu.add_command(
                     label="Aceptar", command=lambda: aceptar(bkng["id"]))
@@ -308,32 +318,64 @@ def BookingWindow(modify=False):
     global cUSer, bookings
 
     def submit():
-        print("should submit")
+        update()
+        checkRoom()
+        if (NNA_warn.get() == dates_warn.get() == room_warn.get() == q_warn.get() == ""):
+            print("should submit")
+        else:
+            InformativeWindow("Debe completar los campos correctamente")
 
     def update(event=""):
-        summon_people()
-        summon_roomType()
+        print("update")
+        if checkQuant():
+            summon_people()
+            summon_roomType()
         summon_food()
+        summon_dates()
 
     def checkNNA(event=""):
         try:
-            for a in ages:
+            for a in ages + names:
                 a.get()
+            for n in names:
+                if "," in n.get():
+                    NNA_warn.set('No incluya comas (",")')
+                    return
             NNA_warn.set("")
         except TclError:
             NNA_warn.set("Todas las edades deben ser números.")
 
+    def checkQuant():
+        nonlocal stored_q
+        try:
+            q = quant.get()
+            if q != stored_q:
+                if q > 2 or q < 1:
+                    q_warn.set("La cantidad debe ser de entre 1 y 2.")
+                else:
+                    q_warn.set("")
+                    if stored_q != q:
+                        stored_q = q
+                        return True
+        except TclError:
+            q_warn.set("La cantidad debe ser un número.")
+        return False
+
+    def checkRoom():
+        if selected_roomType.get() == -1:
+            room_warn.set("Debe seleccionar una habitación")
+
     def summon_roomType(event=""):
+        q = quant.get()
         for w in roomRB.winfo_children():
             w.destroy()
-
         roomTypes = []
-        q = quant.get()
         if q == 1:
             roomTypes = [('Privado Simple', 0), ('Compartido Simple', 2)]
         elif q == 2:
             roomTypes = [('Privado Doble', 1), ('Compartido doble', 3)]
         for size in roomTypes:
+            selected_roomType.set(-1)
             r = ttk.Radiobutton(
                 roomRB,
                 text=size[0],
@@ -341,18 +383,10 @@ def BookingWindow(modify=False):
                 variable=selected_roomType
             )
             r.pack(anchor="w", fill='x', padx=5, pady=5)
+        ttk.Label(roomRB, textvariable=room_warn, foreground="red").pack()
 
     def summon_people(event=""):
-        try:
-            q = quant.get()
-            if q > 2 or q < 1:
-                q_warn.set("La cantidad debe ser de entre 1 y 2 personas.")
-                return
-            else:
-                q_warn.set("")
-        except TclError:
-            q_warn.set("La cantidad debe ser un número.")
-            return
+        q = quant.get()
         for w in NNA_wdgts:
             w.destroy()
         NNA_wdgts[:] = []
@@ -375,6 +409,60 @@ def BookingWindow(modify=False):
             foodEntry.forget()
             foodLbl.forget()
 
+    def summon_dates():
+        for i, v in enumerate(vars):
+            l = limitvars[i]
+            if v["y"].get() == str(date.today().year):
+                l["minm"] = date.today().month
+                if v["m"].get() == str(date.today().month):
+                    l["mind"] = date.today().day
+                else:
+                    l["mind"] = 1
+            else:
+                l["minm"] = 1
+
+            if v["m"].get() in (str(a) for a in (1, 3, 5, 7, 8, 10, 12)):
+                l["maxd"] = 31
+            elif v["m"].get() in (str(a) for a in (4, 6, 9, 11)):
+                l["maxd"] = 30
+            elif v["m"].get() == str(2):
+                try:
+                    datetime.strptime('Feb 29', v["y"].get())
+                    l["maxd"] = 29
+                except ValueError:
+                    l["maxd"] = 28
+            if (i == 1):
+                l["miny"] = startYear.get()
+                if startYear.get() == finishYear.get():
+                    try:
+                        l["minm"] = int(startMonth.get())
+                        if startMonth.get() == finishMonth.get():
+                            l["mind"] = int(startDay.get())
+                    except ValueError:
+                        pass
+
+            # Now update
+            comoboxes[i]["y_c"].config(values=[y for y in range(
+                date.today().year, date.today().year+5)])
+            comoboxes[i]["m_c"].config(
+                values=[m for m in range(l["minm"], 13)])
+            comoboxes[i]["d_c"].config(
+                values=[d for d in range(l["mind"], l["maxd"]+1)])
+        try:
+            if int(startYear.get()) > int(finishYear.get()):
+                dates_warn.set(
+                    "Año de inicio no debe ser mayor a año de finalización")
+            elif int(startYear.get()) == int(finishYear.get()):
+                if int(startMonth.get()) > int(finishMonth.get()):
+                    dates_warn.set(
+                        "Mes de inicio no debe ser mayor a mes de finalización")
+                elif int(startMonth.get()) == int(finishMonth.get()):
+                    if int(startDay.get()) > int(finishDay.get()):
+                        dates_warn.set(
+                            "Día de inicio no debe ser mayor a día de finalización")
+        except ValueError:
+            pass
+
     bw = tkWindow("Nueva reserva")
     if modify != False:
         bw.title("Modificar reserva")
@@ -385,6 +473,7 @@ def BookingWindow(modify=False):
     ttk.Label(people, text="Cantidad de personas:").pack()
 
     quant = IntVar(people, value=1)
+    stored_q = -1
     q_entry = ttk.Entry(people, textvariable=quant)
     q_entry.bind("<Return>", update)
     q_entry.bind("<FocusOut>", update)
@@ -404,7 +493,7 @@ def BookingWindow(modify=False):
     ttk.Label(nameNage, text="Edades:").grid(
         column=1, row=0, sticky=(E, N))
     ttk.Label(nameNage, textvariable=NNA_warn,
-              foreground="red").grid(column=1, row=6)
+              foreground="red").grid(column=0, columnspan=2, row=6)
 
     #
     # roomType
@@ -415,15 +504,15 @@ def BookingWindow(modify=False):
     roomRB = ttk.Frame(roomType)
     roomRB.bind("<FocusOut>", update)
     roomRB.pack(fill="x", padx=5, pady=5)
-
-    selected_roomType = StringVar(roomRB)
+    selected_roomType = IntVar(roomRB, value=-1)
+    room_warn = StringVar(roomRB)
 
     #
     # food
     food = ttk.Frame(bw)
     food.grid(column=1, row=0, sticky=(N, E, W))
     foodBool = BooleanVar(food)
-    foodComment = StringVar()
+    foodComment = StringVar(food)
     ttk.Label(
         food, text=f"¿Desea incluir desayuno? El coste es de {FOOD_PRICE_PER_NIGHT} por noche", wraplength=150).pack()
     ttk.Checkbutton(food, variable=foodBool, text="Incluir desayuno",
@@ -441,30 +530,40 @@ def BookingWindow(modify=False):
     # dates
     dates = ttk.Frame(bw)
     dates.grid(column=1, row=1, sticky=(W, S, E))
+    startYear = StringVar(dates)
+    startMonth = StringVar(dates)
+    startDay = StringVar(dates)
+    finishYear = StringVar(dates)
+    finishMonth = StringVar(dates)
+    finishDay = StringVar(dates)
 
-    startDate = StringVar(dates)
-    finishDate = StringVar(dates)
+    vars = ({"y": startYear, "m": startMonth, "d": startDay},
+            {"y": finishYear, "m": finishMonth, "d": finishDay})
+    minStartMonth = minStartDay = minFinishYear = minFinishMonth = minFinishtDay = maxStartDay = maxFinishDay = 1
+    limitvars = ({"minm": minStartMonth, "mind": minStartDay, "maxd": maxStartDay},
+                 {"miny": minFinishYear, "minm": minFinishMonth, "mind": minFinishtDay, "maxd": maxFinishDay})
+    labels = (("Año de inicio", "Mes de inicio", "Día de inicio"),
+              ("Año de finalización", "Mes de finalización", "Día de finalización"))
+    comoboxes = [{}, {}]
 
-    # Year Dropdown
-    years = [str(year) for year in range(1900, 2100)]
-    year_combobox = ttk.Combobox(dates, values=years, state="readonly")
-    year_combobox.set("Select Year")
-    year_combobox.pack(pady=5)
+    for i in range(len(vars)):
+        comoboxes[i] = dict(zip(["y_c", "m_c", "d_c"], [
+                            ttk.Combobox(dates, state="readonly") for _ in range(3)]))
+        for j, w in enumerate(vars[i].values()):
+            c = list(comoboxes[i].values())[j]
+            c.config(textvariable=w)
+            c.set(labels[i][j])
+            c.grid(pady=5, row=i, column=j)
+            c.bind("<1>", update)
+            c.bind("<Return>", update)
 
-    # Month Dropdown
-    months = [str(month) for month in range(1, 13)]
-    month_combobox = ttk.Combobox(dates, values=months, state="readonly")
-    month_combobox.set("Select Month")
-    month_combobox.pack(pady=5)
-
-    # Day Dropdown
-    days = [str(day) for day in range(1, 32)]
-    day_combobox = ttk.Combobox(dates, values=days, state="readonly")
-    day_combobox.set("Select Day")
-    day_combobox.pack(pady=5)
+    dates_warn = StringVar(dates)
+    ttk.Label(dates, textvariable=dates_warn, foreground="red").grid(
+        column=0, row=2, columnspan=3)
 
     ttk.Button(bw, text="Reservar", width=25, command=submit).grid(
         row=2, column=0, columnspan=2, sticky=(S), pady=5, padx=5)
+
     update()
 
 
@@ -498,9 +597,8 @@ def confirmationWindow(msg):
 def InformativeWindow(msg):
     infw = tkWindow(msg, grid=False)
     Label(infw, text=msg).pack()
-    ttk.Button(infw, text="Ok", command=lambda: infw.destroy()).pack()
     infw.grab_set()
-    infw.wait_window()
+    infw.focus_set()
 
 
 # defs>
@@ -511,25 +609,24 @@ bookings = []
 bookingsByUser = []
 updateFiles()
 
-root = tkWindow("Monjas", geometry="650x350")
+root = tkWindow("Monjas", geometry="650x350", resizable=True)
 
 welcomeMsg = StringVar()
 welcomeMsg.set("Bienvenido")
 
-mainframe = ttk.Frame(root, padding="3 3 12 12")
-mainframe.grid(column=0, row=0, sticky=N)
-mainframe.grid_columnconfigure(0, weight=1)
-ttk.Label(mainframe, textvariable=welcomeMsg).grid(row=0, sticky=(W, S, E))
-logInBtt = ttk.Button(mainframe,
+uspw = ttk.Frame(root, padding="3 3 12 12")
+uspw.pack()
+ttk.Label(uspw, textvariable=welcomeMsg).grid(row=0, sticky=(W, S, E))
+logInBtt = ttk.Button(uspw,
                       text="Iniciar sesión",
                       command=logInWindow)
 logInBtt.grid(row=1, sticky=(W, S, E), pady=10)
-signOutBtt = ttk.Button(mainframe,
+signOutBtt = ttk.Button(uspw,
                         text="Cerrar sesión",
-                        command=signOut)
+                        command=logOut)
 signOutBtt.grid(row=1, sticky=(W, E), pady=10)
 signOutBtt.grid_forget()
-bkgsBtt = ttk.Button(mainframe,
+bkgsBtt = ttk.Button(uspw,
                      text="Administrar reservas",
                      command=ManageBookingsWindow)
 bkgsBtt.grid(row=3, sticky=(W, E), pady=10)
@@ -544,7 +641,7 @@ cUser = ""
 cAdmin = 0
 
 # test:
-BookingWindow()
+# BookingWindow()
 
 root.mainloop()
 
