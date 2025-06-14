@@ -48,6 +48,7 @@ def modifyCsvRow(filepath, newValue, rowI=None, conditionField=None, conditionVa
         writer.writerows(reader)
 
     os.replace(tPath, filepath)
+    updateFiles()
 
 
 def upUsers():
@@ -215,7 +216,7 @@ def logInWindow():
     uspw.bind("<Return>", checkUsPw)
 
 
-def newUserWindow(self):
+def newUserWindow():
     def tryNewUs(*args):
         givenUser = usStr.get()
         givenPassword = pwStr.get()
@@ -227,20 +228,17 @@ def newUserWindow(self):
                 addCsv("users.csv", givenUser, givenPassword, 0)
                 InformativeWindow("Usuario creado. Inicie sesión ahora.")
                 newUsw.destroy()
-                self.pack()
             else:
                 InformativeWindow("El usuario ya existe")
 
     newUsw = tkWindow("Crear nuevo usuario", grid=True, geometry="300x300")
-    mainframe = ttk.Frame(newUsw, padding="3 3 12 12")
-    mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-    usStr = StringVar(mainframe)
-    pwStr = StringVar(mainframe)
-    ttk.Label(mainframe, text="Usuario").pack()
-    ttk.Entry(mainframe, textvariable=usStr).pack()
-    ttk.Label(mainframe, text="Contraseña").pack()
-    ttk.Entry(mainframe, textvariable=pwStr, show="*").pack()
-    ttk.Button(mainframe, text='Crear nuevo usuario', command=tryNewUs).pack()
+    usStr = StringVar(newUsw)
+    pwStr = StringVar(newUsw)
+    ttk.Label(newUsw, text="Usuario").pack()
+    ttk.Entry(newUsw, textvariable=usStr).pack()
+    ttk.Label(newUsw, text="Contraseña").pack()
+    ttk.Entry(newUsw, textvariable=pwStr, show="*").pack()
+    ttk.Button(newUsw, text='Crear nuevo usuario', command=tryNewUs).pack()
     newUsw.bind("<Return>", tryNewUs)
 
 
@@ -457,8 +455,8 @@ def BookingWindow(modify=False):
         if foodBool.get():
             foodLbl.pack()
             foodEntry.pack()
-            foodComment.set("")
         else:
+            foodComment.set("")
             foodEntry.forget()
             foodLbl.forget()
 
@@ -567,7 +565,7 @@ def BookingWindow(modify=False):
     food = ttk.Frame(bw)
     food.grid(column=1, row=0, sticky=(N, E, W))
     foodBool = BooleanVar(food)
-    foodComment = StringVar(food, value="")
+    foodComment = StringVar(food)
     ttk.Label(
         food, text=f"¿Desea incluir desayuno? El coste es de {FOOD_PRICE_PER_NIGHT} por noche", wraplength=150).pack()
     ttk.Checkbutton(food, variable=foodBool, text="Incluir desayuno",
