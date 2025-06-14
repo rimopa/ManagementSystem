@@ -21,6 +21,7 @@ ROOM_PRICE_PER_NIGHT = (60000, 85000, 50000, 55000)
 
 # <defs:
 
+
 def modifyCsvRow(filepath, newValue, rowI=None, conditionField=None, conditionValue=None, field=None):
     tPath = "temp_" + filepath
     with open(filepath, 'r', encoding='utf-8') as inp, open(tPath, 'w', encoding='utf-8', newline='') as out:
@@ -518,8 +519,6 @@ def BookingWindow(modify=False):
             pass
 
     bw = tkWindow("Nueva reserva")
-    if modify != False:
-        bw.title("Modificar reserva")
     #
     # people
     people = ttk.Frame(bw)
@@ -615,8 +614,12 @@ def BookingWindow(modify=False):
     ttk.Label(dates, textvariable=dates_warn, foreground="red").grid(
         column=0, row=2, columnspan=3)
 
-    ttk.Button(bw, text="Reservar", width=25, command=submit).grid(
+    submitBtt = ttk.Button(bw, text="Reservar", width=25, command=submit).grid(
         row=2, column=0, columnspan=2, sticky=(S), pady=5, padx=5)
+
+    if modify != False:
+        bw.title("Modificar reserva")
+        submitBtt.config(text="Modificar reserva")
 
     update()
 
@@ -705,18 +708,17 @@ root.mainloop()
 # un mensaje "* perdiste treinta mil dólares *"
 
 # datos = [reserva[
-    # id,
-    # usuario,
-    # estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada, 4=en realización),
-    # nombres,
-    # edades,
-    # comida (0=sin 1=con "string/comentario"=dieta específica),
-    # tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
-    # startDate,
-    # finishDate (ambos incluyente),
-    # persona de referencia/contacto,
-    # comentario]]
-#
+# id,
+# usuario,
+# estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada, 4=en realización),
+# nombres,
+# edades,
+# comida (0=sin 1=con "string/comentario"=dieta específica),
+# tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
+# startDate,
+# finishDate (ambos incluyente),
+# persona de referencia/contacto,
+# comentario]]
 # Habitaciones:
 # 24 total:
 # Baño privado simple: $60 000
