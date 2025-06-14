@@ -233,7 +233,7 @@ def newUserWindow():
     ttk.Entry(newUsw, textvariable=usStr).pack()
     ttk.Label(newUsw, text="Contraseña").pack()
     ttk.Entry(newUsw, textvariable=pwStr, show="*").pack()
-    ttk.Button(newUsw, text='Crear nuevo usuario', command=tryNewUs).pack()
+    ttk.Button(newUsw, text='Crear nuevo usuario', command=tryNewUs).pack(pady=10)
     newUsw.bind("<Return>", tryNewUs)
 
 
