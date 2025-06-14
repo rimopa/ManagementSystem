@@ -6,8 +6,7 @@ try:
     import copy
     from datetime import date, datetime
 except ModuleNotFoundError:
-    print("One or more modules not found")
-    print("Aborting...")
+    print("One or more modules not found.\nAborting...")
     raise SystemExit
 # date.today()
 os.system("cls")
@@ -79,8 +78,7 @@ def updateFiles():
 def addCsv(filepath, *args):
     with open(filepath, "a", encoding='utf8') as a:
         a.write(",".join([str(a) for a in args])+"\n")
-    upUsers()
-    upReservas()
+    updateFiles()
 
 
 def indexOfUser(user):
@@ -327,10 +325,8 @@ def BookingWindow(modify=False):
                 foodAuxVar = 0
 
             namesAuxVar = []
-            print(q)
             for n in names[:q]:
                 n = n.get().strip()
-                print("n:", n)
                 if n != "" and n is not None:
                     namesAuxVar.append(n)
                 else:
@@ -338,7 +334,7 @@ def BookingWindow(modify=False):
                     return
 
             agesAuxVar = []
-            for a in ages[0:q]:
+            for a in ages[:q]:
                 a = a.get()
                 if not a > 0:
                     NNA_warn.set('Todas las edades deben ser mayores a 0')
@@ -371,7 +367,6 @@ def BookingWindow(modify=False):
             InformativeWindow("Debe completar los campos correctamente")
 
     def update(event=""):
-        print("update")
         if checkQuant():
             summon_people()
             summon_roomType()
