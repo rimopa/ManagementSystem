@@ -21,7 +21,6 @@ ROOM_PRICE_PER_NIGHT = (60000, 85000, 50000, 55000)
 
 # <defs:
 
-
 def modifyCsvRow(filepath, newValue, rowI=None, conditionField=None, conditionValue=None, field=None):
     tPath = "temp_" + filepath
     with open(filepath, 'r', encoding='utf-8') as inp, open(tPath, 'w', encoding='utf-8', newline='') as out:
@@ -657,6 +656,7 @@ def InformativeWindow(msg):
 
 
 # defs>
+
 # <setup
 us = []
 
@@ -687,65 +687,40 @@ bkgsBtt = ttk.Button(uspw,
 bkgsBtt.grid(row=3, sticky=(W, E), pady=10)
 bkgsBtt.grid_forget()
 
-# setup>
-
-# #1: user select:
 givenUser = ""
 givenPassword = ""
 cUser = ""
 cAdmin = 0
 
-# test:
-BookingWindow()
+# setup>
 
 root.mainloop()
 
-# #2.1: user administrar reservas:
-# show-matchingReservas
-# #2.2: user crear reserva:
-# ##inputs cPersonas nombres, edad, comida, habitación, startDate, finishDate, contacto, comment
-# cPersonas = 2
-# nombres = ["Lorenzo Sánchez", "Ismalol Hayno"]
-# edades = ["18", "17"]
-# comida = 0
-# hab = 3
-# startDate = "2024-05-25"
-# finishDate = "2024-05-26"
-# contacto = "+5493512297549"
-# comment = "son negros"
-#
-# addCsv(
-#    "reservas.csv",
-#    len(bookings)
-#    cUser,
-#    "0",
-#    ";".join(nombres),
-#    ";".join(edades),
-#    comida,
-#    hab,
-#    startDate,
-#    finishDate,
-#    contacto,
-#    comment,
-# )
-
-# import user/password from csv
-# import reservas from csv
+# importar user/password from csv
+# importar reservas from csv
 # 1: iniciar sesión (admin/user)
 # 2-admin: aceptar o rechazar reservas, administrar reservas
 # 2-user: reservar / cancelar (administrar reservas propias)
-#
+
 # un mensaje "* perdiste treinta mil dólares *"
-# datos = [reserva[id,usuario,estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada, 4=en realización),
-# nombres, edad, comida (0=sin 1=con "string/comentario"=dieta específica),
-# tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
-# startDate, finishDate (ambos incluyente),
-# persona de referencia/contacto, comentario]]
+
+# datos = [reserva[
+    # id,
+    # usuario,
+    # estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada, 4=en realización),
+    # nombres,
+    # edades,
+    # comida (0=sin 1=con "string/comentario"=dieta específica),
+    # tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
+    # startDate,
+    # finishDate (ambos incluyente),
+    # persona de referencia/contacto,
+    # comentario]]
 #
 # Habitaciones:
 # 24 total:
-# Baño privado simple: $40 000
-# Baño privado doble: $30 000
+# Baño privado simple: $60 000
+# Baño privado doble: $85 000
 # 7 total:
-# Baño compartido simple: $18 000
-# Baño compartido doble: $15 000
+# Baño compartido simple: $50 000
+# Baño compartido doble: $55 000
