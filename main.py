@@ -199,9 +199,6 @@ def logInWindow():
                     newUserWindow()
     uspw = tkWindow("Iniciar sesión", grid=True, geometry="300x300")
 
-    uspw = ttk.Frame(uspw, padding="3 3 12 12")
-    uspw.grid(column=0, row=0, sticky=(N, W, E, S))
-
     usStr = StringVar(uspw)
     pwStr = StringVar(uspw)
 
