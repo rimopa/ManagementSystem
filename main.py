@@ -156,6 +156,7 @@ def logIn(user, userId):
         cAdmin = 1
     else:
         cAdmin = 0
+        newbkgBtt.grid()
     print("iniciaste sesión como " + cUser)
     logInBtt.grid_forget()
     bkgsBtt.grid()
@@ -168,6 +169,7 @@ def logOut():
     cUser = ""
     signOutBtt.grid_forget()
     bkgsBtt.grid_forget()
+    newbkgBtt.grid_forget()
     logInBtt.grid()
     welcomeMsg.set("Bienvenido")
 
@@ -689,6 +691,11 @@ bkgsBtt = ttk.Button(uspw,
                      command=ManageBookingsWindow)
 bkgsBtt.grid(row=3, sticky=(W, E), pady=10)
 bkgsBtt.grid_forget()
+newbkgBtt = ttk.Button(uspw,
+                       text="Crear una nueva reserva",
+                       command=BookingWindow)
+newbkgBtt.grid(row=4, sticky=(W, E), pady=10)
+newbkgBtt.grid_forget()
 
 givenUser = ""
 givenPassword = ""
