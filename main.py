@@ -76,11 +76,8 @@ def updateFiles():
 
 
 def addCsv(filepath, *args):
-    with open(filepath, "a", encoding='utf8') as w:
-        list = []
-        for arg in args:
-            list.append(str(arg))
-        w.write("\n" + ",".join(list))
+    with open(filepath, "a", encoding='utf8') as a:
+        a.write(",".join([str(a) for a in args])+"\n")
     upUsers()
     upReservas()
 
@@ -321,7 +318,58 @@ def BookingWindow(modify=False):
         update()
         checkRoom()
         if (NNA_warn.get() == dates_warn.get() == room_warn.get() == q_warn.get() == ""):
-            print("should submit")
+            q = quant.get()
+            foodAuxVar = foodBool.get()
+            if foodAuxVar:
+                foodAuxVar2 = foodComment.get()
+                if foodAuxVar2 != "":
+                    foodAuxVar = foodAuxVar2
+                else:
+                    foodAuxVar = 1
+            else:
+                foodAuxVar = 0
+
+            namesAuxVar = []
+            print(q)
+            for n in names[:q]:
+                n = n.get().strip()
+                print("n:", n)
+                if n != "" and n is not None:
+                    namesAuxVar.append(n)
+                else:
+                    NNA_warn.set('Deben ingresarse nombres')
+                    return
+
+            agesAuxVar = []
+            for a in ages[0:q]:
+                a = a.get()
+                if not a > 0:
+                    NNA_warn.set('Todas las edades deben ser mayores a 0')
+                    return
+                if a > 0:
+                    agesAuxVar.append(str(a))
+
+            for v in vars:
+                try:
+                    for w in v.values():
+                        w = w.get()
+                        int(w)
+                except ValueError:
+                    dates_warn.set("Seleccione fechas")
+                    return
+
+            addCsv("reservas.csv",
+                   len(bookings),
+                   cUser,
+                   0,
+                   ";".join(namesAuxVar),
+                   ";".join(agesAuxVar),
+                   foodAuxVar,
+                   selected_roomType.get(),
+                   f"{startYear.get()}-{startMonth.get()}-{startDay.get()}",
+                   f"{finishYear.get()}-{finishMonth.get()}-{finishDay.get()}")
+            InformativeWindow("Reserva añadida")
+            bw.destroy()
         else:
             InformativeWindow("Debe completar los campos correctamente")
 
@@ -330,20 +378,22 @@ def BookingWindow(modify=False):
         if checkQuant():
             summon_people()
             summon_roomType()
+        checkNNA()
         summon_food()
         summon_dates()
 
     def checkNNA(event=""):
         try:
-            for a in ages + names:
-                a.get()
+            for a in ages:
+                a = a.get()
             for n in names:
-                if "," in n.get():
+                n = n.get()
+                if "," in n:
                     NNA_warn.set('No incluya comas (",")')
                     return
             NNA_warn.set("")
         except TclError:
-            NNA_warn.set("Todas las edades deben ser números.")
+            NNA_warn.set("Todas las edades deben ser números")
 
     def checkQuant():
         nonlocal stored_q
@@ -364,6 +414,8 @@ def BookingWindow(modify=False):
     def checkRoom():
         if selected_roomType.get() == -1:
             room_warn.set("Debe seleccionar una habitación")
+        else:
+            room_warn.set("")
 
     def summon_roomType(event=""):
         q = quant.get()
@@ -398,7 +450,6 @@ def BookingWindow(modify=False):
             NNA_wdgts.append(a)
             NNA_wdgts.append(b)
         nameNage.bind("<Return>", checkNNA)
-        checkNNA()
 
     def summon_food(event=""):
         if foodBool.get():
@@ -452,14 +503,18 @@ def BookingWindow(modify=False):
             if int(startYear.get()) > int(finishYear.get()):
                 dates_warn.set(
                     "Año de inicio no debe ser mayor a año de finalización")
+                return
             elif int(startYear.get()) == int(finishYear.get()):
                 if int(startMonth.get()) > int(finishMonth.get()):
                     dates_warn.set(
                         "Mes de inicio no debe ser mayor a mes de finalización")
+                    return
                 elif int(startMonth.get()) == int(finishMonth.get()):
                     if int(startDay.get()) > int(finishDay.get()):
                         dates_warn.set(
                             "Día de inicio no debe ser mayor a día de finalización")
+                        return
+            dates_warn.set("")
         except ValueError:
             pass
 
@@ -486,8 +541,8 @@ def BookingWindow(modify=False):
     nameNage.bind("<FocusOut>", update)
     nameNage.pack(padx=5, pady=5)
     NNA_warn = StringVar(nameNage)
-    names = [StringVar(nameNage) for _ in range(4)]
-    ages = [IntVar(nameNage) for _ in range(4)]
+    names = [StringVar(nameNage, value="") for _ in range(2)]
+    ages = [IntVar(nameNage, value=0) for _ in range(2)]
     ttk.Label(nameNage, text="Nombres:").grid(
         column=0, row=0, sticky=(W, N))
     ttk.Label(nameNage, text="Edades:").grid(
@@ -512,7 +567,7 @@ def BookingWindow(modify=False):
     food = ttk.Frame(bw)
     food.grid(column=1, row=0, sticky=(N, E, W))
     foodBool = BooleanVar(food)
-    foodComment = StringVar(food)
+    foodComment = StringVar(food, value="")
     ttk.Label(
         food, text=f"¿Desea incluir desayuno? El coste es de {FOOD_PRICE_PER_NIGHT} por noche", wraplength=150).pack()
     ttk.Checkbutton(food, variable=foodBool, text="Incluir desayuno",
@@ -641,7 +696,7 @@ cUser = ""
 cAdmin = 0
 
 # test:
-# BookingWindow()
+BookingWindow()
 
 root.mainloop()
 
