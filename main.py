@@ -656,7 +656,6 @@ def InformativeWindow(msg):
 us = []
 
 bookings = []
-bookingsByUser = []
 updateFiles()
 
 root = tkWindow("Monjas", geometry="650x350", resizable=True)
