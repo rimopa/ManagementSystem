@@ -233,7 +233,8 @@ def newUserWindow():
     ttk.Entry(newUsw, textvariable=usStr).pack()
     ttk.Label(newUsw, text="Contraseña").pack()
     ttk.Entry(newUsw, textvariable=pwStr, show="*").pack()
-    ttk.Button(newUsw, text='Crear nuevo usuario', command=tryNewUs).pack(pady=10)
+    ttk.Button(newUsw, text='Crear nuevo usuario',
+               command=tryNewUs).pack(pady=10)
     newUsw.bind("<Return>", tryNewUs)
 
 
@@ -312,6 +313,7 @@ def BookingWindow(modify=False):
     def submit():
         update()
         checkRoom()
+
         if (NNA_warn.get() == dates_warn.get() == room_warn.get() == q_warn.get() == ""):
             q = quant.get()
             foodAuxVar = foodBool.get()
@@ -344,9 +346,14 @@ def BookingWindow(modify=False):
 
             for v in vars:
                 try:
-                    for w in v.values():
-                        w = w.get()
-                        int(w)
+                    startDate = date(
+                        int(startYear.get()),
+                        int(startMonth.get()),
+                        int(startDay.get()))
+                    finishDate = date(
+                        int(finishYear.get()),
+                        int(finishMonth.get()),
+                        int(finishDay.get()))
                 except ValueError:
                     dates_warn.set("Seleccione fechas")
                     return
@@ -359,8 +366,8 @@ def BookingWindow(modify=False):
                    ";".join(agesAuxVar),
                    foodAuxVar,
                    selected_roomType.get(),
-                   f"{startYear.get()}-{startMonth.get()}-{startDay.get()}",
-                   f"{finishYear.get()}-{finishMonth.get()}-{finishDay.get()}")
+                   startDate,
+                   finishDate)
             InformativeWindow("Reserva añadida")
             bw.destroy()
         else:
