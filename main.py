@@ -265,17 +265,17 @@ def ManageBookingsWindow():
             bkng = userBookings[row_id]
             menu.delete(0, "end")
             # only available if not yet accepted:
-            if bkng["state"] == 0:
-                menu.add_command(label="Cancelar",
-                                 command=lambda: cancelar(bkng["id"]))
-                if not cAdmin:
+            if bkng["state"] in (0, 1):
+                if cAdmin:
+                    menu.add_command(
+                        label="Aceptar", command=lambda: aceptar(bkng["id"]))
+                    menu.add_command(label="Rechazar",
+                                     command=lambda: rechazar(bkng["id"]))
+                elif bkng["state"] == 0:
+                    menu.add_command(label="Cancelar",
+                                     command=lambda: cancelar(bkng["id"]))
                     menu.add_command(label="Modificar",
                                      command=lambda: modify(bkng["id"]))
-            if cAdmin:
-                menu.add_command(
-                    label="Aceptar", command=lambda: aceptar(bkng["id"]))
-                menu.add_command(label="Rechazar",
-                                 command=lambda: rechazar(bkng["id"]))
             menu.post(event.x_root, event.y_root)
 
     bw = tkWindow("Administrar reservas")
@@ -713,7 +713,7 @@ root.mainloop()
 # datos = [reserva[
 # id,
 # usuario,
-# estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada, 4=en realización),
+# estado de la reserva (0=por aceptar 1=aceptada/en espera, 2=terminada, 3=cancelada/rechazada 4=en realización),
 # nombres,
 # edades,
 # comida (0=sin 1=con "string/comentario"=dieta específica),
