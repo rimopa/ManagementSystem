@@ -6,6 +6,7 @@ try:
     import copy
     from datetime import date, datetime
     import tkcalendar
+    import re
 except ModuleNotFoundError:
     print("One or more modules not found.\nAborting...")
     raise SystemExit
@@ -308,6 +309,14 @@ def ManageBookingsWindow():
     tree.bind("<Button-3>", show_menu)
 
 
+def without(s: str, lst: list):
+    new = []
+    for char in s:
+        if not char in lst:
+            new.append(char)
+    return str(new)
+
+
 def BookingWindow(modify=False):
     global cUSer, bookings
 
@@ -345,6 +354,11 @@ def BookingWindow(modify=False):
                 if a > 0:
                     agesAuxVar.append(str(a))
 
+            if not (contactData := checkConForm()):
+                InformativeWindow(
+                    'Introduzca un número de 10 dígitos o correo electrónico válido\nEjemplos: "123 456-7890", "name@email.net"')
+                return
+
             addCsv("reservas.csv",
                    len(bookings),
                    cUser,
@@ -354,7 +368,9 @@ def BookingWindow(modify=False):
                    foodAuxVar,
                    selected_roomType.get(),
                    startDate.get(),
-                   finishDate.get())
+                   finishDate.get(),
+                   contactData,
+                   "")
             InformativeWindow("Reserva añadida")
             bw.destroy()
         else:
@@ -364,6 +380,7 @@ def BookingWindow(modify=False):
         if checkQuant():
             summon_people()
         checkNNA()
+        checkConForm()
         summon_food()
         summon_dates()
 
@@ -401,6 +418,15 @@ def BookingWindow(modify=False):
             room_warn.set("Debe seleccionar una habitación")
         else:
             room_warn.set("")
+
+    def checkConForm():
+        con = contact.get().strip()
+        if without(con, numcon := [" ", "-", "+"]).isdigit() and len(numcon) == 10:
+            return numcon
+        elif re.match(r'^[^@]+@[^@]+\.[^@]+$', con):
+            return con
+        else:
+            return False
 
     def summon_people(event=""):
         q = quant.get()
@@ -469,37 +495,37 @@ def BookingWindow(modify=False):
     # roomType
     roomType = ttk.Frame(bw)
     roomType.grid(column=0, row=1, sticky=(S, W, E), padx=5, pady=5)
-    
+
     ttk.Label(roomType, text="Elegir habitación:").pack()
     roomRB = ttk.Frame(roomType)
     roomRB.bind("<FocusOut>", update)
     roomRB.pack(fill="x", padx=5, pady=5)
     selected_roomType = IntVar(roomRB, value=-1)
     room_warn = StringVar(roomRB)
-    
+
     for size in [('Privado', 0), ('Compartido', 1)]:
-            selected_roomType.set(-1)
-            r = ttk.Radiobutton(
-                roomRB,
-                text=size[0],
-                value=size[1],
-                variable=selected_roomType
-            )
-            r.pack(anchor="w", fill='x', padx=5, pady=5)
+        selected_roomType.set(-1)
+        r = ttk.Radiobutton(
+            roomRB,
+            text=size[0],
+            value=size[1],
+            variable=selected_roomType
+        )
+        r.pack(anchor="w", fill='x', padx=5, pady=5)
     ttk.Label(roomRB, textvariable=room_warn, foreground="red").pack()
 
     #
     # food
     food = ttk.Frame(bw)
-    food.grid(column=1, row=1, rowspan=2, sticky=(E, W))
+    food.grid(column=1, row=0, sticky=(W, E))
     foodBool = BooleanVar(food)
     foodComment = StringVar(food)
     ttk.Label(
-        food, text=f"¿Desea incluir desayuno? El coste es de {FOOD_PRICE_PER_NIGHT} por noche", wraplength=150).pack()
+        food, text=f"¿Desea incluir desayuno? El coste es de {FOOD_PRICE_PER_NIGHT} por noche", wraplength=250).pack()
     ttk.Checkbutton(food, variable=foodBool, text="Incluir desayuno",
                     onvalue=True, offvalue=False, command=summon_food).pack()
     foodLbl = ttk.Label(
-        food, text="Si desea incluir algún comentario sobre alguna condición que deba incluir la comida que se le brinde, hágalo aquí:", wraplength=180)
+        food, text="Si desea incluir algún comentario sobre alguna condición que deba incluir la comida que se le brinde, hágalo aquí:", wraplength=250)
     foodEntry = ttk.Entry(food, textvariable=foodComment)
 
     food.bind("<Return>", update)
@@ -510,7 +536,7 @@ def BookingWindow(modify=False):
     #
     # dates
     dates = ttk.Frame(bw)
-    dates.grid(column=1, row=0, sticky=(W, E))
+    dates.grid(column=1, row=1, rowspan=2, sticky=(E, W))
 
     startDate = StringVar(dates)
     finishDate = StringVar(dates)
@@ -535,10 +561,8 @@ def BookingWindow(modify=False):
     conForm = ttk.Frame(bw)
     conForm.grid(column=0, row=2, sticky=(W, S, E))
     contact = StringVar(conForm)
-    con_warn = StringVar(conForm)
-    ttk.Label(conForm, text="Ingrese un nùmero de teléfono o correo electrónico por el que podamos contactarlo", wraplength=250).pack()
+    ttk.Label(conForm, text="Ingrese un nùmero de teléfono o correo electrónico por el que podamos contactarlo:", wraplength=250).pack()
     ttk.Entry(conForm, textvariable=contact).pack()
-    ttk.Label(textvariable=con_warn, foreground="red").pack()
 
     submitBtt = ttk.Button(bw, text="Reservar", width=25, command=submit).grid(
         row=3, column=0, columnspan=2, sticky=(S), pady=5, padx=5)
