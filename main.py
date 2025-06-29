@@ -5,6 +5,7 @@ try:
     import csv
     import copy
     from datetime import date, datetime
+    import tkcalendar
 except ModuleNotFoundError:
     print("One or more modules not found.\nAborting...")
     raise SystemExit
@@ -344,20 +345,6 @@ def BookingWindow(modify=False):
                 if a > 0:
                     agesAuxVar.append(str(a))
 
-            for v in vars:
-                try:
-                    startDate = date(
-                        int(startYear.get()),
-                        int(startMonth.get()),
-                        int(startDay.get()))
-                    finishDate = date(
-                        int(finishYear.get()),
-                        int(finishMonth.get()),
-                        int(finishDay.get()))
-                except ValueError:
-                    dates_warn.set("Seleccione fechas")
-                    return
-
             addCsv("reservas.csv",
                    len(bookings),
                    cUser,
@@ -460,62 +447,14 @@ def BookingWindow(modify=False):
             foodLbl.forget()
 
     def summon_dates():
-        for i, v in enumerate(vars):
-            l = limitvars[i]
-            if v["y"].get() == str(date.today().year):
-                l["minm"] = date.today().month
-                if v["m"].get() == str(date.today().month):
-                    l["mind"] = date.today().day
-                else:
-                    l["mind"] = 1
-            else:
-                l["minm"] = 1
-
-            if v["m"].get() in (str(a) for a in (1, 3, 5, 7, 8, 10, 12)):
-                l["maxd"] = 31
-            elif v["m"].get() in (str(a) for a in (4, 6, 9, 11)):
-                l["maxd"] = 30
-            elif v["m"].get() == str(2):
-                try:
-                    datetime.strptime('Feb 29', v["y"].get())
-                    l["maxd"] = 29
-                except ValueError:
-                    l["maxd"] = 28
-            if (i == 1):
-                l["miny"] = startYear.get()
-                if startYear.get() == finishYear.get():
-                    try:
-                        l["minm"] = int(startMonth.get())
-                        if startMonth.get() == finishMonth.get():
-                            l["mind"] = int(startDay.get())
-                    except ValueError:
-                        pass
-
-            # Now update
-            comoboxes[i]["y_c"].config(values=[y for y in range(
-                date.today().year, date.today().year+5)])
-            comoboxes[i]["m_c"].config(
-                values=[m for m in range(l["minm"], 13)])
-            comoboxes[i]["d_c"].config(
-                values=[d for d in range(l["mind"], l["maxd"]+1)])
-        try:
-            if int(startYear.get()) > int(finishYear.get()):
-                dates_warn.set(
-                    "Año de inicio no debe ser mayor a año de finalización")
-                return
-            elif int(startYear.get()) == int(finishYear.get()):
-                if int(startMonth.get()) > int(finishMonth.get()):
-                    dates_warn.set(
-                        "Mes de inicio no debe ser mayor a mes de finalización")
-                    return
-                elif int(startMonth.get()) == int(finishMonth.get()):
-                    if int(startDay.get()) > int(finishDay.get()):
-                        dates_warn.set(
-                            "Día de inicio no debe ser mayor a día de finalización")
-                        return
+        sd = date.fromisoformat(startDate.get())
+        fd = date.fromisoformat(finishDate.get())
+        finishCalendar.config(mindate=sd)
+        if (sd > fd):
+            dates_warn.set(
+                "La fecha de inicio no puede ser mayor a fecha de finalización")
+        else:
             dates_warn.set("")
-        except ValueError:
-            pass
 
     bw = tkWindow("Nueva reserva")
     #
@@ -582,36 +521,26 @@ def BookingWindow(modify=False):
     # dates
     dates = ttk.Frame(bw)
     dates.grid(column=1, row=1, sticky=(W, S, E))
-    startYear = StringVar(dates)
-    startMonth = StringVar(dates)
-    startDay = StringVar(dates)
-    finishYear = StringVar(dates)
-    finishMonth = StringVar(dates)
-    finishDay = StringVar(dates)
 
-    vars = ({"y": startYear, "m": startMonth, "d": startDay},
-            {"y": finishYear, "m": finishMonth, "d": finishDay})
-    minStartMonth = minStartDay = minFinishYear = minFinishMonth = minFinishtDay = maxStartDay = maxFinishDay = 1
-    limitvars = ({"minm": minStartMonth, "mind": minStartDay, "maxd": maxStartDay},
-                 {"miny": minFinishYear, "minm": minFinishMonth, "mind": minFinishtDay, "maxd": maxFinishDay})
-    labels = (("Año de inicio", "Mes de inicio", "Día de inicio"),
-              ("Año de finalización", "Mes de finalización", "Día de finalización"))
-    comoboxes = [{}, {}]
+    startDate = StringVar(dates)
+    finishDate = StringVar(dates)
 
-    for i in range(len(vars)):
-        comoboxes[i] = dict(zip(["y_c", "m_c", "d_c"], [
-                            ttk.Combobox(dates, state="readonly") for _ in range(3)]))
-        for j, w in enumerate(vars[i].values()):
-            c = list(comoboxes[i].values())[j]
-            c.config(textvariable=w)
-            c.set(labels[i][j])
-            c.grid(pady=5, row=i, column=j)
-            c.bind("<1>", update)
-            c.bind("<Return>", update)
+    startDate.set(date.today())
+    finishDate.set(date.today())
+
+    startCalendar = tkcalendar.Calendar(
+        dates, mindate=date.today(), textvariable=startDate, locale="es", date_pattern="y-mm-dd")
+    startCalendar.grid(row=0, column=0)
+    startCalendar.bind("<Button-1>", update)
+    finishCalendar = tkcalendar.Calendar(
+        dates, textvariable=finishDate, locale="es", date_pattern="y-mm-dd")
+    finishCalendar.grid(row=0, column=1)
+    finishCalendar.bind("<1>", update)
+    finishCalendar.bind("<FocusOut>", update)
 
     dates_warn = StringVar(dates)
     ttk.Label(dates, textvariable=dates_warn, foreground="red").grid(
-        column=0, row=2, columnspan=3)
+        row=1, column=0, columnspan=2)
 
     submitBtt = ttk.Button(bw, text="Reservar", width=25, command=submit).grid(
         row=2, column=0, columnspan=2, sticky=(S), pady=5, padx=5)
@@ -699,6 +628,7 @@ cUser = ""
 cAdmin = 0
 
 # setup>
+BookingWindow()
 
 root.mainloop()
 
