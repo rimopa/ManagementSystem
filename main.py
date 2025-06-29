@@ -376,7 +376,6 @@ def BookingWindow(modify=False):
     def update(event=""):
         if checkQuant():
             summon_people()
-            summon_roomType()
         checkNNA()
         summon_food()
         summon_dates()
@@ -541,6 +540,13 @@ def BookingWindow(modify=False):
     
     for size in [('Privado', 0), ('Compartido', 1)]:
             selected_roomType.set(-1)
+            r = ttk.Radiobutton(
+                roomRB,
+                text=size[0],
+                value=size[1],
+                variable=selected_roomType
+            )
+            r.pack(anchor="w", fill='x', padx=5, pady=5)
     ttk.Label(roomRB, textvariable=room_warn, foreground="red").pack()
 
     #
@@ -701,7 +707,7 @@ root.mainloop()
 # nombres,
 # edades,
 # comida (0=sin 1=con "string/comentario"=dieta específica),
-# tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
+# tipo de habitación (0=privado, 1=compartido)
 # startDate,
 # finishDate (ambos incluyente),
 # persona de referencia/contacto,
