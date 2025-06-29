@@ -353,8 +353,8 @@ def BookingWindow(modify=False):
                    ";".join(agesAuxVar),
                    foodAuxVar,
                    selected_roomType.get(),
-                   startDate,
-                   finishDate)
+                   startDate.get(),
+                   finishDate.get())
             InformativeWindow("Reserva añadida")
             bw.destroy()
         else:
