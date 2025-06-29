@@ -649,7 +649,7 @@ cUser = ""
 cAdmin = 0
 
 # setup>
-BookingWindow()
+
 root.mainloop()
 
 # importar user/password from csv
