@@ -562,7 +562,7 @@ def BookingWindow(modify=False):
     #
     # food
     food = ttk.Frame(bw)
-    food.grid(column=1, row=0, sticky=(N, E, W))
+    food.grid(column=1, row=1, rowspan=2, sticky=(E, W))
     foodBool = BooleanVar(food)
     foodComment = StringVar(food)
     ttk.Label(
@@ -581,7 +581,7 @@ def BookingWindow(modify=False):
     #
     # dates
     dates = ttk.Frame(bw)
-    dates.grid(column=1, row=1, sticky=(W, S, E))
+    dates.grid(column=1, row=0, sticky=(W, E))
     startYear = StringVar(dates)
     startMonth = StringVar(dates)
     startDay = StringVar(dates)
@@ -613,8 +613,16 @@ def BookingWindow(modify=False):
     ttk.Label(dates, textvariable=dates_warn, foreground="red").grid(
         column=0, row=2, columnspan=3)
 
+    conForm = ttk.Frame(bw)
+    conForm.grid(column=0, row=2, sticky=(W, S, E))
+    contact = StringVar(conForm)
+    con_warn = StringVar(conForm)
+    ttk.Label(conForm, text="Ingrese un nùmero de teléfono o correo electrónico por el que podamos contactarlo", wraplength=250).pack()
+    ttk.Entry(conForm, textvariable=contact).pack()
+    ttk.Label(textvariable=con_warn, foreground="red").pack()
+
     submitBtt = ttk.Button(bw, text="Reservar", width=25, command=submit).grid(
-        row=2, column=0, columnspan=2, sticky=(S), pady=5, padx=5)
+        row=3, column=0, columnspan=2, sticky=(S), pady=5, padx=5)
 
     if modify != False:
         bw.title("Modificar reserva")
@@ -699,7 +707,7 @@ cUser = ""
 cAdmin = 0
 
 # setup>
-
+BookingWindow()
 root.mainloop()
 
 # importar user/password from csv
