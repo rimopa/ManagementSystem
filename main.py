@@ -454,7 +454,6 @@ def BookingWindow(modify=False):
     def summon_dates():
         sd = date.fromisoformat(startDate.get())
         fd = date.fromisoformat(finishDate.get())
-        finishCalendar.config(mindate=sd)
         if (sd > fd):
             dates_warn.set(
                 "La fecha de inicio no puede ser mayor a fecha de finalización")
