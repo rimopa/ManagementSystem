@@ -1,12 +1,12 @@
 try:
+    import copy
+    import csv
+    from datetime import date
     import os
+    import re
+    import tkcalendar
     from tkinter import *
     from tkinter import ttk
-    import csv
-    import copy
-    from datetime import date, datetime
-    import tkcalendar
-    import re
 except ModuleNotFoundError:
     print("One or more modules not found.\nAborting...")
     raise SystemExit
