@@ -376,7 +376,6 @@ def BookingWindow(modify=False):
     def update(event=""):
         if checkQuant():
             summon_people()
-            summon_roomType()
         checkNNA()
         summon_food()
         summon_dates()
@@ -415,26 +414,6 @@ def BookingWindow(modify=False):
             room_warn.set("Debe seleccionar una habitación")
         else:
             room_warn.set("")
-
-    def summon_roomType(event=""):
-        q = quant.get()
-        for w in roomRB.winfo_children():
-            w.destroy()
-        roomTypes = []
-        if q == 1:
-            roomTypes = [('Privado Simple', 0), ('Compartido Simple', 2)]
-        elif q == 2:
-            roomTypes = [('Privado Doble', 1), ('Compartido doble', 3)]
-        for size in roomTypes:
-            selected_roomType.set(-1)
-            r = ttk.Radiobutton(
-                roomRB,
-                text=size[0],
-                value=size[1],
-                variable=selected_roomType
-            )
-            r.pack(anchor="w", fill='x', padx=5, pady=5)
-        ttk.Label(roomRB, textvariable=room_warn, foreground="red").pack()
 
     def summon_people(event=""):
         q = quant.get()
@@ -551,13 +530,24 @@ def BookingWindow(modify=False):
     # roomType
     roomType = ttk.Frame(bw)
     roomType.grid(column=0, row=1, sticky=(S, W, E), padx=5, pady=5)
+    
     ttk.Label(roomType, text="Elegir habitación:").pack()
-
     roomRB = ttk.Frame(roomType)
     roomRB.bind("<FocusOut>", update)
     roomRB.pack(fill="x", padx=5, pady=5)
     selected_roomType = IntVar(roomRB, value=-1)
     room_warn = StringVar(roomRB)
+    
+    for size in [('Privado', 0), ('Compartido', 1)]:
+            selected_roomType.set(-1)
+            r = ttk.Radiobutton(
+                roomRB,
+                text=size[0],
+                value=size[1],
+                variable=selected_roomType
+            )
+            r.pack(anchor="w", fill='x', padx=5, pady=5)
+    ttk.Label(roomRB, textvariable=room_warn, foreground="red").pack()
 
     #
     # food
@@ -717,7 +707,7 @@ root.mainloop()
 # nombres,
 # edades,
 # comida (0=sin 1=con "string/comentario"=dieta específica),
-# tipo de habitación (0=privado simple, 1=privado doble, 2=compartido simple, 3=compartido doble)
+# tipo de habitación (0=privado, 1=compartido)
 # startDate,
 # finishDate (ambos incluyente),
 # persona de referencia/contacto,
