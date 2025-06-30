@@ -23,6 +23,11 @@ ROOM_PRICE_PER_NIGHT = (60000, 85000, 50000, 55000)
 # <defs:
 
 
+def without(s: str, charlst: tuple):
+    """Return str without characters that are on charlst"""
+    return "".join([c for c in s if c not in charlst])
+
+
 def modifyCsvRow(filepath, newValue, rowI=None, conditionField=None, conditionValue=None, field=None):
     tPath = "temp_" + filepath
     with open(filepath, 'r', encoding='utf-8') as inp, open(tPath, 'w', encoding='utf-8', newline='') as out:
@@ -308,15 +313,6 @@ def ManageBookingsWindow():
     tree.pack(expand=True, fill="both")
     tree.bind("<Button-3>", show_menu)
 
-
-def without(s: str, lst: list):
-    new = []
-    for char in s:
-        if not char in lst:
-            new.append(char)
-    return str(new)
-
-
 def BookingWindow(modify=False):
     global cUSer, bookings
 
@@ -421,7 +417,8 @@ def BookingWindow(modify=False):
 
     def checkConForm():
         con = contact.get().strip()
-        if without(con, numcon := [" ", "-", "+"]).isdigit() and len(numcon) == 10:
+        numcon = without(con, (" ", "-", "+"))
+        if numcon.isdigit() and len(numcon) == 10:
             return numcon
         elif re.match(r'^[^@]+@[^@]+\.[^@]+$', con):
             return con
