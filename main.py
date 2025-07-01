@@ -127,15 +127,14 @@ def formatBookings(bkngs):
             b["food"] = "Incluida. " + b["food"]
         # roomType:
         if b["roomType"] == 0:
-            b["roomType"] = "Privado simple"
+            b["roomType"] = "Privado"
         elif b["roomType"] == 1:
-            b["roomType"] = "Privado doble"
-        elif b["roomType"] == 2:
-            b["roomType"] = "Compartido simple"
-        elif b["roomType"] == 3:
-            b["roomType"] = "Compartido doble"
+            b["roomType"] = "Compartido"
         # startDate:
+        b["startDate"] = date.fromisoformat(b["startDate"])
         # finishDate:
+        b["finishDate"] = date.fromisoformat(b["finishDate"])
+        print(b)
     return a
 
 
