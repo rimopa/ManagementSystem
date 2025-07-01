@@ -297,8 +297,8 @@ def ManageBookingsWindow():
     headings = ["Usuario", "Estado", "Personas", "Edades", "Comida", "Tipo de habitación",
                 "Fecha de inicio", "Fecha de finalización"]
     if not cAdmin:
-        columns.remove("user")
-        headings.remove("Usuario")
+        columns = columns[1:]
+        headings = headings[1:]
         
     tree = ttk.Treeview(mainframe, columns=columns, show="headings")
     for i in range(len(headings)):
