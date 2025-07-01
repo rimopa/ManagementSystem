@@ -292,10 +292,14 @@ def ManageBookingsWindow():
     else:
         userBookings = getResrevas(cUser)
 
-    columns = ("state", "names", "ages", "food",
-               "roomType", "startDate", "finishDate")
-    headings = ("Estado", "Personas", "Edades", "Comida", "Tipo de habitación",
-                "Fecha de inicio", "Fecha de finalización")
+    columns = ["username", "state", "names", "ages", "food",
+               "roomType", "startDate", "finishDate"]
+    headings = ["Usuario", "Estado", "Personas", "Edades", "Comida", "Tipo de habitación",
+                "Fecha de inicio", "Fecha de finalización"]
+    if not cAdmin:
+        columns.remove("user")
+        headings.remove("Usuario")
+        
     tree = ttk.Treeview(mainframe, columns=columns, show="headings")
     for i in range(len(headings)):
         tree.heading(i, text=headings[i])
@@ -311,6 +315,8 @@ def ManageBookingsWindow():
 
     tree.pack(expand=True, fill="both")
     tree.bind("<Button-3>", show_menu)
+
+
 
 def BookingWindow(modify=False):
     global cUSer, bookings
