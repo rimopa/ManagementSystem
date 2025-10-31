@@ -4,6 +4,7 @@ try:
     from datetime import date
     import os
     import re
+    import db
     import tkcalendar
     from tkinter import *
     from tkinter import ttk
@@ -14,6 +15,7 @@ except ModuleNotFoundError:
 # <consts>
 MAX_YEAR = date.today().year + 5
 MAX_ROOMS = 48
+MAX_PEOPLE = 2
 FOOD_PRICE_PER_NIGHT = 5000
 ROOM_PRICE_PER_NIGHT = (60000, 85000, 50000, 55000)
 # </consts>
@@ -92,6 +94,16 @@ def indexOfUser(user):
 def getResrevas(user):
     global bookings
     return [bkng for bkng in bookings if bkng.get("username") == user]
+
+
+def tryNewBooking(Booking: db.Booking, people: list, roomType) -> int:
+    """Tries to add a new booking to the database. Returns True if successful, False otherwise."""
+    db.getAvailableRooms(Booking.startDate, Booking.finishDate, roomType)
+    if len(db.availableRooms) > round((people)/2):
+        booking_id = db.add_booking(Booking)
+        return booking_id
+    else:
+        return None
 
 
 def formatBookings(bkngs):
@@ -485,16 +497,19 @@ class ManageBookingsFrame(ttk.Frame):
         if confirmationWindow(self, "¿Está seguro de que desea cancelar su reserva? Esta acción no puede revertirse."):
             modifyCsvRow("reservas.csv", newValue=3,
                          conditionField="id", conditionValue=id, field="state")
+            updateFiles()
             self.refresh()
 
     def aceptar(self, id):
         modifyCsvRow("reservas.csv", conditionField="id",
                      conditionValue=id, field="state", newValue=1)
+        updateFiles()
         self.refresh()
 
     def rechazar(self, id):
         modifyCsvRow("reservas.csv", conditionField="id",
                      conditionValue=id, field="state", newValue=3)
+        updateFiles()
         self.refresh()
 
     def go_back(self):
@@ -504,6 +519,9 @@ class ManageBookingsFrame(ttk.Frame):
         # Clear existing items
         for item in self.tree.get_children():
             self.tree.delete(item)
+
+        # Update data from files
+        updateFiles()
 
         # Get bookings
         if self.app.cAdmin:
@@ -817,19 +835,11 @@ class NewBookingFrame(ttk.Frame):
                     'Ejemplos: "123 456-7890", "name@email.net"')
                 return
 
-            addCsv("reservas.csv",
-                   len(bookings),
-                   self.app.cUser,
-                   0,
-                   ";".join(namesAuxVar),
-                   ";".join(agesAuxVar),
-                   foodAuxVar,
-                   self.selected_roomType.get(),
-                   self.startDate.get(),
-                   self.finishDate.get(),
-                   contactData,
-                   "")
-
+            bkng = db.Booking(None, self.app.cUser, 0, self.foodBool.get(), foodAuxVar,
+                              self.startDate.get(), self.finishDate.get(), "comment", contactData, 0)
+            tryNewBooking(bkng, [{age: int(age), name: name} for age, name in zip(
+                agesAuxVar, namesAuxVar)], self.selected_roomType.get())
+            updateFiles()
             InformativeWindow(self, "Reserva añadida")
             self.frame_manager.show_frame("main")
         else:
