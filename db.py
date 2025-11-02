@@ -1,6 +1,7 @@
 import sqlite3
-path = "monjas.db"
-connection = sqlite3.connect(path)
+
+PATH = "monjas.db"
+connection = sqlite3.connect(PATH)
 cur = connection.cursor()
 
 ROOMS = 40
@@ -9,12 +10,12 @@ ROOMS = 40
 Bookings:
 state: 0 - Pending
        1 - Confirmed
-           2 - Finished
-           3 - Canceled by User
-           4 - Canceled by Admin
-           5 - In Progress
+       2 - Finished
+       3 - Canceled (by User)
+       4 - Declined (by Admin)
+       5 - In Progress
 food: 0    - No food
-          1    - Yes food
+      1    - Yes food
 food_pref: preferences (may be null)
 startdate, finishdate: YYYY-MM-DD (ISO8601)
 contact: phone or email
@@ -36,15 +37,15 @@ weekly_hours: number of hours worked per week
 Users:
 username: unique username
 password: raw password
-admin: 0 - regular user
-           1 - admin user
+admin:  0 - regular user
+        1 - admin user
 
 Room-Booking:
 double: 0 - single room
         1 - double room
 
 People:
-nane: full name
+name: full name
 dni: identification number
 age: age in years
 
@@ -54,7 +55,8 @@ Means that a person is associated with a booking.
 
 
 class Booking:
-    def __init__(self, id, user_id, state, food, food_pref, startDate, finishDate, comment, contact, price):
+    def __init__(self, id: int, user_id: int, state: int, food: bool, food_pref: str,
+                 startDate: str, finishDate: str, comment: str, contact: str, price: int):
         self.id = id
         self.user_id = user_id
         self.state = state
@@ -65,6 +67,10 @@ class Booking:
         self.contact = contact
         self.price = price
         self.food_pref = food_pref
+
+    def returnTuple(self):
+        return (self.id, self.user_id, self.state, self.startDate, self.finishDate,
+                self.food, self.food_pref, self.comment, self.contact, self.price)
 
 
 def initdb():
@@ -137,7 +143,7 @@ def initdb():
     connection.commit()
 
 
-def reserAll():
+def resetAll():
     cur.executescript("""
         DELETE FROM "Room-Booking";
         DELETE FROM "Rooms";
@@ -145,7 +151,8 @@ def reserAll():
         DELETE FROM "Users";
         DELETE FROM "Bookings";
         DELETE FROM "People";
-        DELETE FROM "Booking-People";""")
+        DELETE FROM "Booking-People";
+        """)
     resetRooms()
     connection.commit()
 
@@ -173,8 +180,8 @@ def addUser(username, password):
 def addBooking(b: Booking):
     cur.execute("""
         INSERT INTO Bookings(user_id, state, startdate, finishdate, food, food_pref, comment, contact, price)
-        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (b.user_id, b.state, b.startdate, b.finishdate, b.food, b.food_pref, b.comment, b.contact, b.price))
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (b.returnTuple()[1:]))
     connection.commit()
     booking_id = cur.lastrowid
     return booking_id
@@ -225,7 +232,7 @@ def getBooking(id):
         return None
 
 
-def getUserid(username):
+def getUserId(username):
     cur.execute("""
                 SELECT user_id FROM Users WHERE username=?
         """, (username,))
@@ -262,40 +269,23 @@ def getBookingsFromDate(startdate, finishdate):
     return bookings
 
 
-def getAvailableRooms(startDate, finishDate, roomType=None, shared_bathroom=None):
-    """Return available rooms between startDate and finishDate.
-
-    Arguments:
-    - startDate, finishDate: ISO date strings (YYYY-MM-DD)
-    - roomType: if not None, filter by Rooms.type (0 = private bathroom, 1 = shared)
-    - shared_bathroom: if not None, boolean indicating whether the caller
-      requires a shared bathroom (True) or not (False). This is equivalent to
-      roomType=1 when True, roomType=0 when False. If both are provided,
-      `roomType` takes precedence.
-
-    Side-effect: sets module-level `availableRooms` list (kept for compatibility
-    with existing code that references `db.availableRooms`). Returns the list
-    of rows fetched from the database.
-    """
+def getAvailableRooms(conn, startDate, finishDate, roomType=None):
+    """Return available rooms between startDate and finishDate with optional type."""
     sql = """
-        SELECT * FROM Rooms WHERE room_id NOT IN(
-            SELECT rb.room_id FROM "Room-Booking" rb
-            JOIN Bookings b ON rb.booking_id=b.booking_id
-            WHERE NOT(date(b.finishdate) <= date(?) OR date(b.startdate) >= date(?))
-        )"""
+SELECT r.*
+FROM Rooms r
+LEFT JOIN "Room-Booking" rb
+    ON r.room_id = rb.room_id
+LEFT JOIN Bookings b
+    ON rb.booking_id = b.booking_id
+    AND NOT (b.finishdate <= ? OR b.startdate >= ?)
+WHERE b.booking_id IS NULL
+"""
     params = [startDate, finishDate]
 
-    # Determine final type filter
-    final_type = None
     if roomType is not None:
-        final_type = roomType
-    elif shared_bathroom is not None:
-        final_type = 1 if shared_bathroom else 0
-
-    if final_type is not None:
-        sql = sql.rstrip() + " AND type = ?"
-        params.append(final_type)
-
+        sql += " AND r.type = ?"
+        params.append(roomType)
     cur.execute(sql, tuple(params))
     rooms = cur.fetchall()
     return rooms
@@ -350,11 +340,31 @@ def isAdmin(user_id):
         return False
 
 
-initdb()
-# addBooking(getUserid("admin"), 0, "2024-07-01",
-#    "2024-07-10", 2, 1, None, "+54 351 665-2991", 0)
-addUser("admin", "adminwashere")
-get = getUsersBookings(getUserid("admin"))
-if get:
-    print(get[1][0])
-print(getUser(getUserid("admin")))
+def cancelBooking(booking_id):
+    cur.execute("""
+        UPDATE Bookings
+        SET state = 3
+        WHERE booking_id = ?
+    """, (booking_id,))
+    connection.commit()
+
+
+def declineBooking(booking_id):
+    cur.execute("""
+        UPDATE Bookings
+        SET state = 4
+        WHERE booking_id = ?
+    """, (booking_id,))
+    connection.commit()
+
+
+def acceptBooking(booking_id):
+    cur.execute("""
+        UPDATE Bookings
+        SET state = 1
+        WHERE booking_id = ?
+    """, (booking_id,))
+    connection.commit()
+
+
+resetRooms()

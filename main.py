@@ -1,17 +1,17 @@
 try:
     import copy
     import csv
-    from datetime import date
     import os
     import re
     import db
+    import sqlite3
     import tkcalendar
+    from datetime import date
     from tkinter import *
     from tkinter import ttk
-except ModuleNotFoundError as a:
+except ModuleNotFoundError as error:
     print("One or more modules not found.\nAborting...")
-    raise a
-    raise SystemExit
+    raise error
 
 # <consts>
 MAX_YEAR = date.today().year + 5
@@ -28,80 +28,17 @@ def without(s: str, charlst: tuple):
     return "".join([c for c in s if c not in charlst])
 
 
-def modifyCsvRow(filepath, newValue, rowI=None, conditionField=None, conditionValue=None, field=None):
-    tPath = "temp_" + filepath
-    with open(filepath, 'r', encoding='utf-8') as inp, open(tPath, 'w', encoding='utf-8', newline='') as out:
-        reader = list(csv.DictReader(inp))
-        writer = csv.DictWriter(out, fieldnames=reader[0].keys())
-
-        if conditionField is None and conditionValue is None and rowI:
-            if field is None:
-                reader[rowI] = newValue
-            else:
-                reader[rowI][field] = newValue
-        elif rowI is None and conditionField and conditionValue:
-            for row in reader:
-                if row[conditionField] == str(conditionValue):
-                    if field is None:
-                        row = newValue
-                    else:
-                        row[field] = newValue
-
-        writer.writeheader()
-        writer.writerows(reader)
-
-    os.replace(tPath, filepath)
-    updateFiles()
-
-
-def upUsers():
-    global us
-    with open("users.csv", "r", encoding='utf8', newline="") as csvfile:
-        us = list(csv.DictReader(csvfile))
-        for u in us:
-            u["admin"] = bool(int(u["admin"]))
-
-
-def upReservas():
-    global bookings
-    with open("reservas.csv", "r", encoding='utf8', newline="") as csvfile:
-        bookings = list(csv.DictReader(csvfile))
-        for bkng in bookings:
-            bkng["id"] = int(bkng["id"])
-            bkng["state"] = int(bkng["state"])
-            bkng["names"] = bkng["names"].split(";")
-            bkng["ages"] = bkng["ages"].split(";")
-            bkng["roomType"] = int(bkng["roomType"])
-
-
-def updateFiles():
-    upReservas()
-    upUsers()
-
-
-def addCsv(filepath, *args):
-    with open(filepath, "a", encoding='utf8') as a:
-        a.write(",".join([str(a) for a in args]) + "\n")
-    updateFiles()
-
-
-def indexOfUser(user):
-    try:
-        return next((i for i, a in enumerate(us) if a["username"] == user), None)
-    except ValueError:
-        return None
-
-
-def getResrevas(user):
-    global bookings
-    return [bkng for bkng in bookings if bkng.get("username") == user]
-
-
 def tryNewBooking(Booking: db.Booking, people: list, roomType) -> int:
     """Tries to add a new booking to the database. Returns True if successful, False otherwise."""
-    db.getAvailableRooms(Booking.startDate, Booking.finishDate, roomType)
-    if len(db.availableRooms) > round((people)/2):
-        booking_id = db.add_booking(Booking)
+    available_rooms = db.getAvailableRooms(
+        Booking.startDate, Booking.finishDate, roomType)
+
+    print(Booking.startDate, Booking.finishDate, roomType)
+    print(type(Booking.startDate), type(Booking.finishDate), type(roomType))
+    print(available_rooms)
+
+    if len(available_rooms) > round((len(people))/2):
+        booking_id = db.addBooking(Booking)
         return booking_id
     else:
         return None
@@ -228,24 +165,24 @@ class MainMenuFrame(ttk.Frame):
         ttk.Label(mainframe, textvariable=self.welcomeMsg,
                   font=('Arial', 16, 'bold')).grid(row=0, sticky=(W, S, E), pady=20)
 
-        self.logInBtt = ttk.Button(mainframe, text="Iniciar sesión",
-                                   command=self.go_to_login)
-        self.logInBtt.grid(row=1, sticky=(W, S, E), pady=10)
+        self.login_button = ttk.Button(mainframe, text="Iniciar sesión",
+                                       command=self.go_to_login)
+        self.login_button.grid(row=1, sticky=(W, S, E), pady=10)
 
-        self.signOutBtt = ttk.Button(mainframe, text="Cerrar sesión",
-                                     command=self.log_out)
-        self.signOutBtt.grid(row=1, sticky=(W, E), pady=10)
-        self.signOutBtt.grid_remove()
+        self.sign_out_button = ttk.Button(mainframe, text="Cerrar sesión",
+                                          command=self.log_out)
+        self.sign_out_button.grid(row=1, sticky=(W, E), pady=10)
+        self.sign_out_button.grid_remove()
 
-        self.bkgsBtt = ttk.Button(mainframe, text="Administrar reservas",
-                                  command=self.go_to_bookings)
-        self.bkgsBtt.grid(row=3, sticky=(W, E), pady=10)
-        self.bkgsBtt.grid_remove()
+        self.manage_bookings_button = ttk.Button(mainframe, text="Administrar reservas",
+                                                 command=self.go_to_bookings)
+        self.manage_bookings_button.grid(row=3, sticky=(W, E), pady=10)
+        self.manage_bookings_button.grid_remove()
 
-        self.newbkgBtt = ttk.Button(mainframe, text="Crear una nueva reserva",
-                                    command=self.go_to_new_booking)
-        self.newbkgBtt.grid(row=4, sticky=(W, E), pady=10)
-        self.newbkgBtt.grid_remove()
+        self.new_booking_button = ttk.Button(mainframe, text="Crear una nueva reserva",
+                                             command=self.go_to_new_booking)
+        self.new_booking_button.grid(row=4, sticky=(W, E), pady=10)
+        self.new_booking_button.grid_remove()
 
         mainframe.columnconfigure(0, weight=1)
 
@@ -259,26 +196,28 @@ class MainMenuFrame(ttk.Frame):
         self.frame_manager.show_frame("new_booking")
 
     def log_out(self):
-        self.app.cUser = ""
+        self.app.cUser = 0
         self.app.cAdmin = 0
         self.refresh()
 
     def refresh(self):
         if self.app.cUser:
-            self.welcomeMsg.set(f"Bienvenido, {self.app.cUser}")
-            self.logInBtt.grid_remove()
-            self.signOutBtt.grid()
-            self.bkgsBtt.grid()
-            if not self.app.cAdmin:
-                self.newbkgBtt.grid()
+            # Get username from user ID
+            user = db.getUser(self.app.cUser)
+            self.welcomeMsg.set(f"Bienvenido, {user[1]}")
+            self.login_button.grid_remove()
+            self.sign_out_button.grid()
+            self.manage_bookings_button.grid()
+            if self.app.cAdmin:
+                self.new_booking_button.grid_remove()
             else:
-                self.newbkgBtt.grid_remove()
+                self.new_booking_button.grid()
         else:
             self.welcomeMsg.set("Bienvenido")
-            self.signOutBtt.grid_remove()
-            self.bkgsBtt.grid_remove()
-            self.newbkgBtt.grid_remove()
-            self.logInBtt.grid()
+            self.sign_out_button.grid_remove()
+            self.manage_bookings_button.grid_remove()
+            self.new_booking_button.grid_remove()
+            self.login_button.grid()
 # </Main Menu Frame>
 
 
@@ -329,23 +268,21 @@ class LoginFrame(ttk.Frame):
         if "," in givenPassword + givenUser:
             InformativeWindow(
                 self, 'No incluya comas (",") en el usuario ni contraseña')
-        else:
-            userId = db.getUserid(givenUser)
-            if userId is not None:
-                if db.userPasswordMatches(userId, givenPassword):
-                    if db.isAdmin(userId):
-                        self.app.cAdmin = 1
-                    else:
-                        self.app.cAdmin = 0
-                    self.usStr.set("")
-                    self.pwStr.set("")
-                    self.frame_manager.show_frame("main")
-                else:
-                    InformativeWindow(
-                        self, "Contraseña incorrecta. Intente nuevamente")
-            else:
-                if confirmationWindow(self, "Usuario no encontrado. ¿Quiere crear un nuevo usuario?"):
-                    self.go_to_signup()
+            return
+        userId = db.getUserId(givenUser)
+        if userId is None:
+            if confirmationWindow(self, "Usuario no encontrado. ¿Quiere crear un nuevo usuario?"):
+                self.go_to_signup()
+            return
+        if not db.userPasswordMatches(userId, givenPassword):
+            InformativeWindow(
+                self, "Contraseña incorrecta. Intente nuevamente")
+            return
+        self.app.cUser = userId
+        self.app.cAdmin = db.isAdmin(userId)
+        self.usStr.set("")
+        self.pwStr.set("")
+        self.frame_manager.show_frame("main")
 
     def go_to_signup(self):
         self.frame_manager.show_frame("signup")
@@ -405,15 +342,23 @@ class SignupFrame(ttk.Frame):
         if "," in givenPassword + givenUser:
             InformativeWindow(
                 self, 'No incluya comas (",") en el usuario ni contraseña')
-        else:
-            if db.getUserid(givenUser) is None:
-                db.addUser(givenUser, givenPassword)
-                InformativeWindow(self, "Usuario creado. Inicie sesión ahora.")
-                self.usStr.set("")
-                self.pwStr.set("")
-                self.frame_manager.show_frame("login")
-            else:
-                InformativeWindow(self, "El usuario ya existe")
+            return
+        if db.getUserId(givenUser) is not None:
+            InformativeWindow(self, "El usuario ya existe")
+            return
+
+        db.addUser(givenUser, givenPassword)
+
+        # Automatically log in the new user
+        userId = db.getUserId(givenUser)
+        self.app.cUser = userId
+        self.app.cAdmin = db.isAdmin(userId)
+
+        self.usStr.set("")
+        self.pwStr.set("")
+
+        InformativeWindow(self, "Usuario creado exitosamente.")
+        self.frame_manager.show_frame("main")
 
     def go_back(self):
         self.usStr.set("")
@@ -495,21 +440,15 @@ class ManageBookingsFrame(ttk.Frame):
 
     def cancelar(self, id):
         if confirmationWindow(self, "¿Está seguro de que desea cancelar su reserva? Esta acción no puede revertirse."):
-            modifyCsvRow("reservas.csv", newValue=3,
-                         conditionField="id", conditionValue=id, field="state")
-            updateFiles()
+            db.cancelBooking(id)
             self.refresh()
 
     def aceptar(self, id):
-        modifyCsvRow("reservas.csv", conditionField="id",
-                     conditionValue=id, field="state", newValue=1)
-        updateFiles()
+        db.acceptBooking(id)
         self.refresh()
 
     def rechazar(self, id):
-        modifyCsvRow("reservas.csv", conditionField="id",
-                     conditionValue=id, field="state", newValue=3)
-        updateFiles()
+        db.declineBooking(id)
         self.refresh()
 
     def go_back(self):
@@ -520,14 +459,11 @@ class ManageBookingsFrame(ttk.Frame):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Update data from files
-        updateFiles()
-
         # Get bookings
         if self.app.cAdmin:
-            self.userBookings = bookings
+            self.userBookings = db.getAllBookings()
         else:
-            self.userBookings = getResrevas(self.app.cUser)
+            self.userBookings = db.getUsersBookings(self.app.cUser)
 
         # Configure columns
         columns = ["username", "state", "names", "ages", "food",
@@ -835,11 +771,12 @@ class NewBookingFrame(ttk.Frame):
                     'Ejemplos: "123 456-7890", "name@email.net"')
                 return
 
+            sdate = date.fromisoformat(self.startDate.get())
+            fdate = date.fromisoformat(self.finishDate.get())
             bkng = db.Booking(None, self.app.cUser, 0, self.foodBool.get(), foodAuxVar,
-                              self.startDate.get(), self.finishDate.get(), "comment", contactData, 0)
+                              sdate, fdate, "comment", contactData, 0)
             tryNewBooking(bkng, [{age: int(age), name: name} for age, name in zip(
                 agesAuxVar, namesAuxVar)], self.selected_roomType.get())
-            updateFiles()
             InformativeWindow(self, "Reserva añadida")
             self.frame_manager.show_frame("main")
         else:
@@ -885,7 +822,7 @@ class HotelReservationApp:
         self.root.rowconfigure(0, weight=1)
 
         # Application state
-        self.cUser = ""
+        self.cUser = 0
         self.cAdmin = 0
 
         # Initialize frame manager
@@ -914,21 +851,8 @@ class HotelReservationApp:
 
 # <Main Entry Point>
 if __name__ == "__main__":
-    # Initialize data
-    us = []
-    bookings = []
-
-    # Create CSV files if they don't exist
-    if not os.path.exists("users.csv"):
-        with open("users.csv", "w", encoding='utf8', newline="") as f:
-            f.write("username,password,admin\n")
-
-    if not os.path.exists("reservas.csv"):
-        with open("reservas.csv", "w", encoding='utf8', newline="") as f:
-            f.write(
-                "id,username,state,names,ages,food,roomType,startDate,finishDate,contact,comment\n")
-
-    updateFiles()
+    # Initialize database
+    db.initdb()
 
     # Create and run application
     root = Tk()
