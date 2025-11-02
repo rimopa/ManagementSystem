@@ -8,8 +8,9 @@ try:
     import tkcalendar
     from tkinter import *
     from tkinter import ttk
-except ModuleNotFoundError:
+except ModuleNotFoundError as a:
     print("One or more modules not found.\nAborting...")
+    raise a
     raise SystemExit
 
 # <consts>
@@ -329,11 +330,10 @@ class LoginFrame(ttk.Frame):
             InformativeWindow(
                 self, 'No incluya comas (",") en el usuario ni contraseña')
         else:
-            userId = indexOfUser(givenUser)
+            userId = db.getUserid(givenUser)
             if userId is not None:
-                if givenPassword == us[userId]["password"]:
-                    self.app.cUser = us[userId]["username"]
-                    if us[userId]["admin"]:
+                if db.userPasswordMatches(userId, givenPassword):
+                    if db.isAdmin(userId):
                         self.app.cAdmin = 1
                     else:
                         self.app.cAdmin = 0
@@ -406,8 +406,8 @@ class SignupFrame(ttk.Frame):
             InformativeWindow(
                 self, 'No incluya comas (",") en el usuario ni contraseña')
         else:
-            if indexOfUser(givenUser) is None:
-                addCsv("users.csv", givenUser, givenPassword, 0)
+            if db.getUserid(givenUser) is None:
+                db.addUser(givenUser, givenPassword)
                 InformativeWindow(self, "Usuario creado. Inicie sesión ahora.")
                 self.usStr.set("")
                 self.pwStr.set("")

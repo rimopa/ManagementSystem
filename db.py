@@ -117,13 +117,15 @@ def initdb():
                 FOREIGN KEY("booking_id") REFERENCES "Bookings"("booking_id"),
                 FOREIGN KEY("room_id") REFERENCES "Rooms"("room_id")
         );
+        
     CREATE TABLE IF NOT EXISTS "People" (
                 "person_id"	INTEGER NOT NULL,
                 "name"	TEXT NOT NULL,
                 "dni"	INTEGER NOT NULL,
                 "age"	INTEGER NOT NULL,
-                PRIMARY KEY("person_id"),
+                PRIMARY KEY("person_id")
         );
+        
     CREATE TABLE IF NOT EXISTS "Booking-People" (
                 "person_id"	INTEGER NOT NULL,
                 "booking_id"	INTEGER NOT NULL,
@@ -141,8 +143,8 @@ def reserAll():
         DELETE FROM "Rooms";
         DELETE FROM "Staff";
         DELETE FROM "Users";
-    DELETE FROM "Bookings";
-    DELETE FROM "People";
+        DELETE FROM "Bookings";
+        DELETE FROM "People";
         DELETE FROM "Booking-People";""")
     resetRooms()
     connection.commit()
@@ -242,15 +244,22 @@ def getUsersBookings(user_id):
     return bookings
 
 
+def getAllBookings():
+    cur.execute("""
+                SELECT * FROM Bookings
+        """)
+    bookings = []
+    for booking in cur.fetchall():
+        bookings.append(Booking(booking))
+    return bookings
+
+
 def getBookingsFromDate(startdate, finishdate):
     cur.execute("""
                 SELECT * FROM Bookings WHERE NOT(date(finishdate) <= date(?) OR date(startdate) >= date(?))
         """, (startdate, finishdate))
     bookings = cur.fetchall()
     return bookings
-
-
-availableRooms = []
 
 
 def getAvailableRooms(startDate, finishDate, roomType=None, shared_bathroom=None):
@@ -289,10 +298,18 @@ def getAvailableRooms(startDate, finishDate, roomType=None, shared_bathroom=None
 
     cur.execute(sql, tuple(params))
     rooms = cur.fetchall()
-    # Update module-level variable for compatibility
-    global availableRooms
-    availableRooms = rooms
     return rooms
+
+
+def getUser(user_id):
+    cur.execute("""
+                SELECT * FROM Users WHERE user_id=?
+        """, (user_id,))
+    user = cur.fetchone()
+    if user:
+        return user
+    else:
+        return None
 
 
 def addpeople(People: list):
@@ -306,9 +323,38 @@ def addpeople(People: list):
         person_id = cur.lastrowid
         person_ids.append(person_id)
     return person_ids
-# initdb()
+
+
+def userPasswordMatches(user_id, password):
+    cur.execute("""
+                SELECT password FROM Users WHERE user_id=?
+        """, (user_id,))
+    user = cur.fetchone()
+    if user:
+        if user[0] == password:
+            return True
+        else:
+            return False
+    else:
+        return None
+
+
+def isAdmin(user_id):
+    cur.execute("""
+                SELECT admin FROM Users WHERE user_id=?
+        """, (user_id,))
+    user = cur.fetchone()
+    if user and user[0] == 1:
+        return True
+    else:
+        return False
+
+
+initdb()
 # addBooking(getUserid("admin"), 0, "2024-07-01",
 #    "2024-07-10", 2, 1, None, "+54 351 665-2991", 0)
-
-
-print(getUsersBookings(getUserid("admin"))[1][0])
+addUser("admin", "adminwashere")
+get = getUsersBookings(getUserid("admin"))
+if get:
+    print(get[1][0])
+print(getUser(getUserid("admin")))
