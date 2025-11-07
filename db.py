@@ -127,16 +127,16 @@ def initdb():
     CREATE TABLE IF NOT EXISTS "People" (
                 "person_id"	INTEGER NOT NULL,
                 "name"	TEXT NOT NULL,
-                "dni"	INTEGER NOT NULL,
+                "dni"	INTEGER NOT NULL UNIQUE,
                 "age"	INTEGER NOT NULL,
                 PRIMARY KEY("person_id")
         );
         
-    CREATE TABLE IF NOT EXISTS "Booking-People" (
+    CREATE TABLE IF NOT EXISTS "Booking-Person" (
                 "person_id"	INTEGER NOT NULL,
                 "booking_id"	INTEGER NOT NULL,
                 PRIMARY KEY("person_id", "booking_id"),
-                FOREIGN KEY("person_id") REFERENCES "Room-People"("person_id"),
+                FOREIGN KEY("person_id") REFERENCES "People"("person_id"),
                 FOREIGN KEY("booking_id") REFERENCES "Bookings"("booking_id")
         );
         """)
@@ -151,7 +151,7 @@ def resetAll():
         DELETE FROM "Users";
         DELETE FROM "Bookings";
         DELETE FROM "People";
-        DELETE FROM "Booking-People";
+        DELETE FROM "Booking-Person";
         """)
     resetRooms()
     connection.commit()
@@ -184,6 +184,20 @@ def addBooking(b: Booking):
     """, (b.returnTuple()[1:]))
     connection.commit()
     booking_id = cur.lastrowid
+    return booking_id
+
+
+def tryNewBooking(booking: Booking, people: list, roomType) -> int:
+    available_rooms = getAvailableRooms(
+        booking.startDate, booking.finishDate, roomType)
+    if len(available_rooms) <= round((len(people))/2):
+        return None
+    room_ids = available_rooms[:round((len(people)+1)/2)]
+    double_flags = []
+    person_ids = addPeople(people)
+    addPeopletoBooking(booking_id, person_ids)
+    addRoomstoBooking(booking_id, room_ids, double_flags)
+    booking_id = addBooking(booking, roomType)
     return booking_id
 
 
@@ -269,18 +283,18 @@ def getBookingsFromDate(startdate, finishdate):
     return bookings
 
 
-def getAvailableRooms(conn, startDate, finishDate, roomType=None):
+def getAvailableRooms(startDate, finishDate, roomType=None):
     """Return available rooms between startDate and finishDate with optional type."""
     sql = """
-SELECT r.*
-FROM Rooms r
-LEFT JOIN "Room-Booking" rb
-    ON r.room_id = rb.room_id
-LEFT JOIN Bookings b
-    ON rb.booking_id = b.booking_id
-    AND NOT (b.finishdate <= ? OR b.startdate >= ?)
-WHERE b.booking_id IS NULL
-"""
+    SELECT r.*
+    FROM Rooms r
+    LEFT JOIN "Room-Booking" rb
+        ON r.room_id = rb.room_id
+    LEFT JOIN Bookings b
+        ON rb.booking_id = b.booking_id
+        AND NOT (b.finishdate <= ? OR b.startdate >= ?)
+    WHERE b.booking_id IS NULL
+    """
     params = [startDate, finishDate]
 
     if roomType is not None:
@@ -288,7 +302,7 @@ WHERE b.booking_id IS NULL
         params.append(roomType)
     cur.execute(sql, tuple(params))
     rooms = cur.fetchall()
-    return rooms
+    return [room[0] for room in rooms]
 
 
 def getUser(user_id):
@@ -302,16 +316,37 @@ def getUser(user_id):
         return None
 
 
-def addpeople(People: list):
+def addPeople(People: list):
+    if not People:
+        return []
+
+    # Extract all DNIs from the input list
+    dnis = [person['dni'] for person in People]
+    dni_to_person = {person['dni']: person for person in People}
+
+    # Get existing people
+    cur.execute(f"""
+        SELECT person_id, dni FROM People WHERE dni IN ({','.join('?' * len(dnis))})
+    """, dnis)
+    # Map existing DNIs to their IDs
+    existing_ids = {}
+    for person_id, dni in cur.fetchall():
+        existing_ids[dni] = person_id
     person_ids = []
-    for person in People:
-        cur.execute("""
-            INSERT INTO People(name, age,dni)
-            VALUES(?, ?)
-        """, (person['name'], person['dni']))
-        connection.commit()
-        person_id = cur.lastrowid
-        person_ids.append(person_id)
+    # Insert people who don't exist yet
+    for dni in dnis:
+        if dni in existing_ids:
+            # Use existing id
+            person_ids.append(existing_ids[dni])
+        else:
+            # Insert new person
+            person = dni_to_person[dni]
+            cur.execute("""
+                INSERT INTO People(name, age, dni)
+                VALUES(?, ?, ?)
+            """, (person['name'], person['age'], person['dni']))
+            connection.commit()
+            person_ids.append(cur.lastrowid)
     return person_ids
 
 
@@ -367,4 +402,19 @@ def acceptBooking(booking_id):
     connection.commit()
 
 
-resetRooms()
+def addPeopletoBooking(booking_id, person_ids):
+    for person_id in person_ids:
+        cur.execute("""
+            INSERT INTO "Booking-Person"(person_id, booking_id)
+            VALUES(?, ?)
+        """, (person_id, booking_id))
+    connection.commit()
+
+
+def addRoomstoBooking(booking_id, room_ids, double_flags):
+    for room_id, double in zip(room_ids, double_flags):
+        cur.execute("""
+            INSERT INTO "Room-Booking"(booking_id, room_id, double)
+            VALUES(?, ?, ?)
+        """, (booking_id, room_id, double))
+    connection.commit()
