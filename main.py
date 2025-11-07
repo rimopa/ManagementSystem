@@ -1,14 +1,13 @@
 try:
     import copy
-    import csv
     import os
     import re
-    import db
     import sqlite3
-    import tkcalendar
     from datetime import date
     from tkinter import *
     from tkinter import ttk
+    import tkcalendar
+    import db
 except ModuleNotFoundError as error:
     print("One or more modules not found.\nAborting...")
     raise error
@@ -28,23 +27,8 @@ def without(s: str, charlst: tuple):
     return "".join([c for c in s if c not in charlst])
 
 
-def tryNewBooking(Booking: db.Booking, people: list, roomType) -> int:
-    """Tries to add a new booking to the database. Returns True if successful, False otherwise."""
-    available_rooms = db.getAvailableRooms(
-        Booking.startDate, Booking.finishDate, roomType)
-
-    print(Booking.startDate, Booking.finishDate, roomType)
-    print(type(Booking.startDate), type(Booking.finishDate), type(roomType))
-    print(available_rooms)
-
-    if len(available_rooms) > round((len(people))/2):
-        booking_id = db.addBooking(Booking)
-        return booking_id
-    else:
-        return None
-
-
 def formatBookings(bkngs):
+    print(bkngs)
     a = copy.deepcopy(bkngs)
     for b in a:
         # state:
@@ -430,11 +414,13 @@ class ManageBookingsFrame(ttk.Frame):
                 if self.app.cAdmin:
                     self.menu.add_command(
                         label="Aceptar", command=lambda: self.aceptar(bkng["id"]))
-                    self.menu.add_command(label="Rechazar",
-                                          command=lambda: self.rechazar(bkng["id"]))
+                    self.menu.add_command(
+                        label="Rechazar", command=lambda: self.rechazar(bkng["id"]))
                 elif bkng["state"] == 0:
-                    self.menu.add_command(label="Cancelar",
-                                          command=lambda: self.cancelar(bkng["id"]))
+                    self.menu.add_command(
+                        label="Cancelar", command=lambda: self.cancelar(bkng["id"]))
+                    self.menu.add_command(
+                        label="Modificar", command=lambda: self.cancelar(bkng["id"]))
 
             self.menu.post(event.x_root, event.y_root)
 
@@ -449,6 +435,10 @@ class ManageBookingsFrame(ttk.Frame):
 
     def rechazar(self, id):
         db.declineBooking(id)
+        self.refresh()
+
+    def modify(self, id):
+        self.frame_manager.show_frame("new_booking", booking_id=id)
         self.refresh()
 
     def go_back(self):
@@ -775,7 +765,7 @@ class NewBookingFrame(ttk.Frame):
             fdate = date.fromisoformat(self.finishDate.get())
             bkng = db.Booking(None, self.app.cUser, 0, self.foodBool.get(), foodAuxVar,
                               sdate, fdate, "comment", contactData, 0)
-            tryNewBooking(bkng, [{age: int(age), name: name} for age, name in zip(
+            db.tryNewBooking(bkng, [{age: int(age), name: name} for age, name in zip(
                 agesAuxVar, namesAuxVar)], self.selected_roomType.get())
             InformativeWindow(self, "Reserva añadida")
             self.frame_manager.show_frame("main")
@@ -785,7 +775,7 @@ class NewBookingFrame(ttk.Frame):
     def go_back(self):
         self.frame_manager.show_frame("main")
 
-    def refresh(self):
+    def refresh(self, id=0):
         # Reset form
         self.quant.set(1)
         self.stored_q = -1
@@ -804,6 +794,7 @@ class NewBookingFrame(ttk.Frame):
         self.room_warn.set("")
         self.dates_warn.set("")
         self.update()
+        # If modifying an existing booking
 # </New Booking Frame>
 
 
