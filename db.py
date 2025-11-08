@@ -55,18 +55,18 @@ Means that a person is associated with a booking.
 
 
 class Booking:
-    def __init__(self, id: int, user_id: int, state: int, food: bool, food_pref: str,
-                 startDate: str, finishDate: str, comment: str, contact: str, price: int):
+    def __init__(self, id: int, user_id: int, state: int, startDate: str, finishDate: str,
+                 food: bool, food_pref: str, comment: str, contact: str, price: int):
         self.id = id
         self.user_id = user_id
         self.state = state
         self.startDate = startDate
         self.finishDate = finishDate
         self.food = food
+        self.food_pref = food_pref
         self.comment = comment
         self.contact = contact
         self.price = price
-        self.food_pref = food_pref
 
     def returnTuple(self):
         return (self.id, self.user_id, self.state, self.startDate, self.finishDate,
@@ -194,10 +194,10 @@ def tryNewBooking(booking: Booking, people: list, roomType) -> int:
         return None
     room_ids = available_rooms[:round((len(people)+1)/2)]
     double_flags = []
+    booking_id = addBooking(booking)
     person_ids = addPeople(people)
     addPeopletoBooking(booking_id, person_ids)
     addRoomstoBooking(booking_id, room_ids, double_flags)
-    booking_id = addBooking(booking, roomType)
     return booking_id
 
 
@@ -261,7 +261,9 @@ def getUsersBookings(user_id):
     cur.execute("""
                 SELECT * FROM Bookings WHERE user_id=?
         """, (user_id,))
-    bookings = cur.fetchall()
+    bookings = []
+    for booking in cur.fetchall():
+        bookings.append(Booking(*booking))
     return bookings
 
 
@@ -271,7 +273,7 @@ def getAllBookings():
         """)
     bookings = []
     for booking in cur.fetchall():
-        bookings.append(Booking(booking))
+        bookings.append(Booking(*booking))
     return bookings
 
 
@@ -418,3 +420,14 @@ def addRoomstoBooking(booking_id, room_ids, double_flags):
             VALUES(?, ?, ?)
         """, (booking_id, room_id, double))
     connection.commit()
+
+
+def getpeopleFromBooking(booking_id):
+    cur.execute("""
+        SELECT p.*
+        FROM People p
+        JOIN "Booking-Person" bp ON p.person_id = bp.person_id
+        WHERE bp.booking_id = ?
+    """, (booking_id,))
+    people = cur.fetchall()
+    return people

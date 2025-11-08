@@ -27,41 +27,24 @@ def without(s: str, charlst: tuple):
     return "".join([c for c in s if c not in charlst])
 
 
-def formatBookings(bkngs):
-    print(bkngs)
-    a = copy.deepcopy(bkngs)
-    for b in a:
+def formatBooking(bookingList: list) -> list:
+    print(bookingList)
+    a=[]
+    for i in range(len(bookingList)):
+        b: db.Booking=bookingList[i]
+        c=dict()
         # state:
-        if b["state"] == 0:
-            b["state"] = "Por aceptar"
-        elif b["state"] == 1:
-            b["state"] = "Aceptada/En espera"
-        elif b["state"] == 2:
-            b["state"] = "Terminada"
-        elif b["state"] == 3:
-            b["state"] = "Rechazada"
-        elif b["state"] == 4:
-            b["state"] = "Activa (realizándose)"
-        # names:
-        b["names"] = ", ".join(b["names"])
-        # ages:
-        b["ages"] = ", ".join(b["ages"])
+        state={0:"Por aceptar",1:"Aceptada/En espera",2:"Terminada",3:"Rechazada",4:"Activa (realizándose)"}
+        c["state"] = state.get(b.state,"Desconocido")
         # food:
-        if b["food"] == "1":
-            b["food"] = "Incluida"
-        elif b["food"] == "0":
-            b["food"] = "No incluida"
-        elif b["food"]:
-            b["food"] = "Incluida. " + b["food"]
-        # roomType:
-        if b["roomType"] == 0:
-            b["roomType"] = "Privado"
-        elif b["roomType"] == 1:
-            b["roomType"] = "Compartido"
-        # startDate:
-        b["startDate"] = date.fromisoformat(b["startDate"])
-        # finishDate:
-        b["finishDate"] = date.fromisoformat(b["finishDate"])
+        if b.food:
+            c["food"] = "Incluida" + (". " + b.food_pref if b.food_pref else "")
+        else:
+            c["food"] = "No incluida"
+        # dates:
+        c["startDate"] = b.startDate
+        c["finishDate"] = b.finishDate
+        a.append(c)
     return a
 # </utility functions>
 
@@ -473,7 +456,7 @@ class ManageBookingsFrame(ttk.Frame):
 
         # Insert data
         row = 0
-        for bkng in formatBookings(self.userBookings):
+        for bkng in formatBooking(self.userBookings):
             self.tree.insert("", END, iid=row, values=[
                 bkng.get(col, "") for col in columns])
             row += 1
@@ -487,6 +470,11 @@ class NewBookingFrame(ttk.Frame):
         self.frame_manager = frame_manager
         self.app = app
         self.setup_ui()
+
+        self.names = [StringVar(value="") for _ in range(2)]
+        self.ages = [IntVar(value=0) for _ in range(2)]
+        self.dnis = [StringVar(value="") for _ in range(2)]
+        self.NNA_wdgts = []
 
     def setup_ui(self):
         # Main scrollable container
@@ -537,12 +525,14 @@ class NewBookingFrame(ttk.Frame):
         self.NNA_warn = StringVar()
         self.names = [StringVar(value="") for _ in range(2)]
         self.ages = [IntVar(value=0) for _ in range(2)]
+        self.dnis = [StringVar(value="") for _ in range(2)]
         self.NNA_wdgts = []
 
         ttk.Label(self.nameNage, text="Nombres:").grid(
             column=0, row=0, sticky=W)
+        ttk.Label(self.nameNage, text="DNI:").grid(column=1, row=0, sticky=W)
         ttk.Label(self.nameNage, text="Edades:").grid(
-            column=1, row=0, sticky=E)
+            column=2, row=0, sticky=E)
         ttk.Label(self.nameNage, textvariable=self.NNA_warn,
                   foreground="red").grid(column=0, columnspan=2, row=6)
 
@@ -693,10 +683,11 @@ class NewBookingFrame(ttk.Frame):
         for i in range(q):
             a = ttk.Entry(self.nameNage, textvariable=self.names[i])
             a.grid(column=0, row=i+2, sticky=(W, E), padx=2, pady=2)
-            b = ttk.Entry(self.nameNage, textvariable=self.ages[i])
+            b = ttk.Entry(self.nameNage, textvariable=self.dnis[i])
             b.grid(column=1, row=i+2, sticky=(W, E), padx=2, pady=2)
-            self.NNA_wdgts.append(a)
-            self.NNA_wdgts.append(b)
+            c = ttk.Entry(self.nameNage, textvariable=self.ages[i])
+            c.grid(column=2, row=i+2, sticky=(W, E), padx=2, pady=2)
+            self.NNA_wdgts.extend([a, b, c])
 
     def summon_food(self, event=None):
         if self.foodBool.get():
@@ -738,6 +729,9 @@ class NewBookingFrame(ttk.Frame):
                 foodAuxVar = 0
 
             namesAuxVar = []
+            dnisAuxVar = []
+            agesAuxVar = []
+            # Validate and collect names
             for n in self.names[:q]:
                 n = n.get().strip()
                 if n != "" and n is not None:
@@ -746,7 +740,15 @@ class NewBookingFrame(ttk.Frame):
                     self.NNA_warn.set('Deben ingresarse nombres')
                     return
 
-            agesAuxVar = []
+            # Validate and collect DNIs
+            for d in self.dnis[:q]:
+                d = d.get().strip()
+                if d.isdigit():
+                    dnisAuxVar.append(d)
+                else:
+                    self.NNA_warn.set('Los DNI deben ser números')
+                    return
+
             for a in self.ages[:q]:
                 a = a.get()
                 if not a > 0:
@@ -765,8 +767,9 @@ class NewBookingFrame(ttk.Frame):
             fdate = date.fromisoformat(self.finishDate.get())
             bkng = db.Booking(None, self.app.cUser, 0, self.foodBool.get(), foodAuxVar,
                               sdate, fdate, "comment", contactData, 0)
-            db.tryNewBooking(bkng, [{age: int(age), name: name} for age, name in zip(
-                agesAuxVar, namesAuxVar)], self.selected_roomType.get())
+            db.tryNewBooking(bkng, [{'name': name, 'dni': int(dni), 'age': int(age)} 
+                           for name, dni, age in zip(namesAuxVar, dnisAuxVar, agesAuxVar)], 
+                    self.selected_roomType.get())
             InformativeWindow(self, "Reserva añadida")
             self.frame_manager.show_frame("main")
         else:
@@ -781,6 +784,8 @@ class NewBookingFrame(ttk.Frame):
         self.stored_q = -1
         for n in self.names:
             n.set("")
+        for d in self.dnis:  # Add this loop
+            d.set("")
         for a in self.ages:
             a.set(0)
         self.selected_roomType.set(-1)
@@ -795,6 +800,24 @@ class NewBookingFrame(ttk.Frame):
         self.dates_warn.set("")
         self.update()
         # If modifying an existing booking
+        if id!=0:
+            booking = db.getBooking(id)
+            people = db.getpeopleFromBooking(id)
+            self.quant.set(len(people))
+            for i in range(len(people)):
+                self.names[i].set(people[i]['name'])
+                self.dnis[i].set(people[i]['dni'])
+                self.ages[i].set(people[i]['age'])
+            self.selected_roomType.set(booking['roomType'])
+            if booking.food==1:
+                self.foodBool.set(True)
+                self.foodComment.set(booking.food_pref)
+            else:
+                self.foodBool.set(False)
+            self.contact.set(booking.contact)
+            self.startDate.set(booking.startDate)
+            self.finishDate.set(booking.finishDate)
+            self.update()
 # </New Booking Frame>
 
 
