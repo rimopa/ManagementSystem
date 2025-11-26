@@ -8,6 +8,7 @@ try:
     from tkinter import ttk
     import tkcalendar
     import db
+    import math
 except ModuleNotFoundError as error:
     print("One or more modules not found.\nAborting...")
     raise error
@@ -28,22 +29,39 @@ def without(s: str, charlst: tuple):
 
 
 def formatBooking(bookingList: list) -> list:
-    print(bookingList)
-    a=[]
+    a = []
     for i in range(len(bookingList)):
-        b: db.Booking=bookingList[i]
-        c=dict()
-        # state:
-        state={0:"Por aceptar",1:"Aceptada/En espera",2:"Terminada",3:"Rechazada",4:"Activa (realizándose)"}
-        c["state"] = state.get(b.state,"Desconocido")
-        # food:
-        if b.food:
-            c["food"] = "Incluida" + (". " + b.food_pref if b.food_pref else "")
-        else:
-            c["food"] = "No incluida"
-        # dates:
+        b: db.Booking = bookingList[i]
+        c = dict()
+        util = {
+            "state": {0: "Por aceptar", 1: "Aceptada/En espera",
+                      2: "Terminada", 3: "Rechazada", 4: "Activa (realizándose)"},
+            "food": {0: "No incluida", 1: "Incluida"},
+            "roomType": {0: "Privado", 1: "Compartido"}
+        }
+
+        people = db.getpeopleFromBooking(b.id)
+        rooms = db.getRoomsFromBooking(b.id)
+
+        print(people)
+        print(rooms)
+
+        c["username"] = db.getUser(b.user_id)[1]
+        c["state"] = util["state"].get(b.state, "Desconocido")
         c["startDate"] = b.startDate
         c["finishDate"] = b.finishDate
+        c["food"] = util["food"].get(b.food, "Desconocido")
+        c["food_pref"] = b.food_pref if b.food == 1 else ""
+        c["comment"] = b.comment
+        c["contact"] = b.contact
+        c["price"] = b.price
+        if rooms:
+            c["roomType"] = (
+                f"{util['roomType'].get(rooms[0]['type'], 'Desconocido')}x{len(rooms)}") if rooms else ""
+        c["names"] = ", ".join([p["name"] for p in people])
+        c["ages"] = ", ".join([str(p["age"]) for p in people])
+        c["dnis"] = ", ".join([str(p["dni"]) for p in people])
+
         a.append(c)
     return a
 # </utility functions>
@@ -390,20 +408,20 @@ class ManageBookingsFrame(ttk.Frame):
         row_id = self.tree.identify_row(event.y)
         if row_id:
             row_id = int(row_id)
-            bkng = self.userBookings[row_id]
+            bkng: db.Booking = self.userBookings[row_id]
             self.menu.delete(0, "end")
 
-            if bkng["state"] in (0, 1):
+            if bkng.state in (0, 1):
                 if self.app.cAdmin:
                     self.menu.add_command(
-                        label="Aceptar", command=lambda: self.aceptar(bkng["id"]))
+                        label="Aceptar", command=lambda: self.aceptar(bkng.id))
                     self.menu.add_command(
-                        label="Rechazar", command=lambda: self.rechazar(bkng["id"]))
-                elif bkng["state"] == 0:
+                        label="Rechazar", command=lambda: self.rechazar(bkng.id))
+                elif bkng.state == 0:
                     self.menu.add_command(
-                        label="Cancelar", command=lambda: self.cancelar(bkng["id"]))
+                        label="Cancelar", command=lambda: self.cancelar(bkng.id))
                     self.menu.add_command(
-                        label="Modificar", command=lambda: self.cancelar(bkng["id"]))
+                        label="Modificar", command=lambda: self.modify(bkng.id))
 
             self.menu.post(event.x_root, event.y_root)
 
@@ -469,6 +487,7 @@ class NewBookingFrame(ttk.Frame):
         super().__init__(parent)
         self.frame_manager = frame_manager
         self.app = app
+        self.modifying_booking_id = None
         self.setup_ui()
 
         self.names = [StringVar(value="") for _ in range(2)]
@@ -500,7 +519,8 @@ class NewBookingFrame(ttk.Frame):
         mainframe = ttk.Frame(scrollable_frame, padding="10 10 10 10")
         mainframe.grid(row=0, column=0, sticky=(N, W, E, S))
 
-        ttk.Label(mainframe, text="Nueva Reserva",
+        self.title_text = StringVar(value="Nueva Reserva")
+        ttk.Label(mainframe, textvariable=self.title_text,
                   font=('Arial', 16, 'bold')).grid(row=0, columnspan=2, pady=10)
 
         # People section
@@ -731,6 +751,7 @@ class NewBookingFrame(ttk.Frame):
             namesAuxVar = []
             dnisAuxVar = []
             agesAuxVar = []
+
             # Validate and collect names
             for n in self.names[:q]:
                 n = n.get().strip()
@@ -765,26 +786,55 @@ class NewBookingFrame(ttk.Frame):
 
             sdate = date.fromisoformat(self.startDate.get())
             fdate = date.fromisoformat(self.finishDate.get())
-            bkng = db.Booking(None, self.app.cUser, 0, self.foodBool.get(), foodAuxVar,
-                              sdate, fdate, "comment", contactData, 0)
-            db.tryNewBooking(bkng, [{'name': name, 'dni': int(dni), 'age': int(age)} 
-                           for name, dni, age in zip(namesAuxVar, dnisAuxVar, agesAuxVar)], 
-                    self.selected_roomType.get())
-            InformativeWindow(self, "Reserva añadida")
-            self.frame_manager.show_frame("main")
+
+            if self.modifying_booking_id:
+                bkng = db.Booking(self.modifying_booking_id, self.app.cUser, 0, sdate, fdate,
+                                  int(self.foodBool.get()), foodAuxVar, "comment", contactData, 0)
+                # Modifying existing booking
+                success = db.tryModifyBooking(
+                    self.modifying_booking_id,
+                    bkng,
+                    [{'name': name, 'dni': int(dni), 'age': int(age)}
+                     for name, dni, age in zip(namesAuxVar, dnisAuxVar, agesAuxVar)],
+                    self.selected_roomType.get()
+                )
+                if success is None:
+                    InformativeWindow(
+                        self, "Error en la base de datos, intente nuevamente")
+                elif not success:
+                    InformativeWindow(
+                        self, "No hay habitaciones disponibles para las fechas seleccionadas")
+                else:
+                    InformativeWindow(self, "Reserva modificada exitosamente")
+                    self.modifying_booking_id = None
+                    self.frame_manager.show_frame("main")
+            else:
+                bkng = db.Booking(None, self.app.cUser, 0, sdate, fdate,
+                                  int(self.foodBool.get()), foodAuxVar, "comment", contactData, 0)
+                booking_id = db.tryNewBooking(bkng, [{'name': name, 'dni': int(dni), 'age': int(age)}
+                                                     for name, dni, age in zip(namesAuxVar, dnisAuxVar, agesAuxVar)],
+                                              self.selected_roomType.get())
+                if booking_id is None:
+                    InformativeWindow(
+                        self, "Error en la base de datos, intente nuevamente")
+                else:
+                    InformativeWindow(self, "Reserva añadida")
+                    self.frame_manager.show_frame("main")
         else:
             InformativeWindow(self, "Debe completar los campos correctamente")
 
     def go_back(self):
         self.frame_manager.show_frame("main")
 
-    def refresh(self, id=0):
+    def refresh(self, booking_id=None):
+        self.title_text.set("Nueva Reserva")
+
         # Reset form
         self.quant.set(1)
         self.stored_q = -1
         for n in self.names:
             n.set("")
-        for d in self.dnis:  # Add this loop
+        for d in self.dnis:
             d.set("")
         for a in self.ages:
             a.set(0)
@@ -799,21 +849,33 @@ class NewBookingFrame(ttk.Frame):
         self.room_warn.set("")
         self.dates_warn.set("")
         self.update()
+
         # If modifying an existing booking
-        if id!=0:
-            booking = db.getBooking(id)
-            people = db.getpeopleFromBooking(id)
+        if booking_id is not None and booking_id != 0:
+            # Modification mode
+            self.title_text.set("Modificar Reserva")
+            self.modifying_booking_id = booking_id
+            booking = db.getBooking(booking_id)
+            people = db.getpeopleFromBooking(booking_id)
+            rooms = db.getRoomsFromBooking(booking_id)
+
             self.quant.set(len(people))
             for i in range(len(people)):
                 self.names[i].set(people[i]['name'])
                 self.dnis[i].set(people[i]['dni'])
                 self.ages[i].set(people[i]['age'])
-            self.selected_roomType.set(booking['roomType'])
-            if booking.food==1:
+
+            # Set room type from the first room
+            if rooms:
+                self.selected_roomType.set(rooms[0]['type'])
+
+            if booking.food == 1:
                 self.foodBool.set(True)
-                self.foodComment.set(booking.food_pref)
+                if booking.food_pref and booking.food_pref != "1":
+                    self.foodComment.set(booking.food_pref)
             else:
                 self.foodBool.set(False)
+
             self.contact.set(booking.contact)
             self.startDate.set(booking.startDate)
             self.finishDate.set(booking.finishDate)

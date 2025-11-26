@@ -1,4 +1,5 @@
 import sqlite3
+import math
 
 PATH = "monjas.db"
 connection = sqlite3.connect(PATH)
@@ -124,7 +125,7 @@ def initdb():
                 FOREIGN KEY("room_id") REFERENCES "Rooms"("room_id")
         );
         
-    CREATE TABLE IF NOT EXISTS "People" (
+        CREATE TABLE IF NOT EXISTS "People" (
                 "person_id"	INTEGER NOT NULL,
                 "name"	TEXT NOT NULL,
                 "dni"	INTEGER NOT NULL UNIQUE,
@@ -132,7 +133,7 @@ def initdb():
                 PRIMARY KEY("person_id")
         );
         
-    CREATE TABLE IF NOT EXISTS "Booking-Person" (
+        CREATE TABLE IF NOT EXISTS "Booking-Person" (
                 "person_id"	INTEGER NOT NULL,
                 "booking_id"	INTEGER NOT NULL,
                 PRIMARY KEY("person_id", "booking_id"),
@@ -144,6 +145,7 @@ def initdb():
 
 
 def resetAll():
+    initdb()
     cur.executescript("""
         DELETE FROM "Room-Booking";
         DELETE FROM "Rooms";
@@ -192,13 +194,55 @@ def tryNewBooking(booking: Booking, people: list, roomType) -> int:
         booking.startDate, booking.finishDate, roomType)
     if len(available_rooms) <= round((len(people))/2):
         return None
-    room_ids = available_rooms[:round((len(people)+1)/2)]
+    room_ids = available_rooms[:round((math.ceil(len(people))/2))]
     double_flags = []
     booking_id = addBooking(booking)
     person_ids = addPeople(people)
     addPeopletoBooking(booking_id, person_ids)
     addRoomstoBooking(booking_id, room_ids, double_flags)
     return booking_id
+
+
+def tryModifyBooking(booking_id: int, booking: Booking, people: list, roomType) -> bool:
+    """Modify an existing booking with new data."""
+    # Check if rooms are available for the new dates
+    available_rooms = getAvailableRooms(
+        booking.startDate, booking.finishDate, roomType, exclude_booking=booking_id)
+    if len(available_rooms) < math.ceil(len(people) / 2):
+        return False
+    """
+        self.user_id = user_id
+        self.state = state
+        self.startDate = startDate
+        self.finishDate = finishDate
+        self.food = food
+        self.food_pref = food_pref
+        self.comment = comment
+        self.contact = contact
+        self.price = price
+    """
+    # Update booking data
+    cur.execute("""
+        UPDATE Bookings 
+        SET state = 0, startdate = ?, finishdate = ?, food = ?, food_pref = ?, comment = ?, contact = ?, price = ?
+        WHERE booking_id = ?
+    """, (booking.startDate, booking.finishDate, booking.food,
+          booking.food_pref, booking.comment, booking.contact,
+          booking.price, booking_id))
+
+    # Remove old associations
+    deleteBookingPeople(booking_id)
+    deleteBookingRooms(booking_id)
+
+    # Add new associations
+    room_ids = available_rooms[:math.ceil(len(people) / 2)]
+    double_flags = [0] * len(room_ids)  # Default to single rooms
+    person_ids = addPeople(people)
+    addPeopletoBooking(booking_id, person_ids)
+    addRoomstoBooking(booking_id, room_ids, double_flags)
+
+    connection.commit()
+    return True
 
 
 def modifyBooking(b: Booking):
@@ -239,9 +283,8 @@ def getBooking(id):
                 SELECT * FROM Bookings WHERE booking_id=?
         """, (id,))
     booking = cur.fetchone()
-    print(booking)
     if booking:
-        return booking
+        return Booking(*booking)
     else:
         return None
 
@@ -285,7 +328,7 @@ def getBookingsFromDate(startdate, finishdate):
     return bookings
 
 
-def getAvailableRooms(startDate, finishDate, roomType=None):
+def getAvailableRooms(startDate, finishDate, roomType=None, exclude_booking=None):
     """Return available rooms between startDate and finishDate with optional type."""
     sql = """
     SELECT r.*
@@ -295,13 +338,19 @@ def getAvailableRooms(startDate, finishDate, roomType=None):
     LEFT JOIN Bookings b
         ON rb.booking_id = b.booking_id
         AND NOT (b.finishdate <= ? OR b.startdate >= ?)
-    WHERE b.booking_id IS NULL
     """
     params = [startDate, finishDate]
+
+    if exclude_booking is not None:
+        sql += " AND (b.booking_id IS NULL OR b.booking_id = ?)"
+        params.append(exclude_booking)
+    else:
+        sql += " WHERE b.booking_id IS NULL"
 
     if roomType is not None:
         sql += " AND r.type = ?"
         params.append(roomType)
+
     cur.execute(sql, tuple(params))
     rooms = cur.fetchall()
     return [room[0] for room in rooms]
@@ -429,5 +478,49 @@ def getpeopleFromBooking(booking_id):
         JOIN "Booking-Person" bp ON p.person_id = bp.person_id
         WHERE bp.booking_id = ?
     """, (booking_id,))
-    people = cur.fetchall()
+    people = []
+    for person in cur.fetchall():
+        people.append({
+            'person_id': person[0],
+            'name': person[1],
+            'dni': person[2],
+            'age': person[3]
+        })
     return people
+
+
+def getRoomsFromBooking(booking_id):
+    """Retrieve the rooms associated with a booking."""
+    cur.execute("""
+        SELECT r.room_id, r.type, rb.double
+        FROM Rooms r
+        JOIN "Room-Booking" rb ON r.room_id = rb.room_id
+        WHERE rb.booking_id = ?
+    """, (booking_id,))
+    rooms = []
+    for room in cur.fetchall():
+        print(room)
+        rooms.append({
+            'room_id': room[0],
+            'type': room[1],
+            'double': room[2]
+        })
+    return rooms
+
+
+def deleteBookingRooms(booking_id):
+    """Remove all room associations for a booking."""
+    cur.execute("""
+        DELETE FROM "Room-Booking"
+        WHERE booking_id = ?
+    """, (booking_id,))
+    connection.commit()
+
+
+def deleteBookingPeople(booking_id):
+    """Remove all people associations for a booking."""
+    cur.execute("""
+        DELETE FROM "Booking-Person"
+        WHERE booking_id = ?
+    """, (booking_id,))
+    connection.commit()
