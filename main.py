@@ -43,9 +43,6 @@ def formatBooking(bookingList: list) -> list:
         people = db.getpeopleFromBooking(b.id)
         rooms = db.getRoomsFromBooking(b.id)
 
-        print(people)
-        print(rooms)
-
         c["username"] = db.getUser(b.user_id)[1]
         c["state"] = util["state"].get(b.state, "Desconocido")
         c["startDate"] = b.startDate
@@ -55,9 +52,7 @@ def formatBooking(bookingList: list) -> list:
         c["comment"] = b.comment
         c["contact"] = b.contact
         c["price"] = b.price
-        if rooms:
-            c["roomType"] = (
-                f"{util['roomType'].get(rooms[0]['type'], 'Desconocido')}x{len(rooms)}") if rooms else ""
+        c["roomType"] = f"{util['roomType'].get(rooms[0]['type'], 'Desconocido')}x{len(rooms)}" if rooms else ""
         c["names"] = ", ".join([p["name"] for p in people])
         c["ages"] = ", ".join([str(p["age"]) for p in people])
         c["dnis"] = ", ".join([str(p["dni"]) for p in people])
@@ -888,7 +883,7 @@ class HotelReservationApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Monjas - Sistema de Reservas")
-        self.root.geometry("900x700")
+        self.root.geometry("1000x600")
         try:
             self.root.iconbitmap(r"icon.ico")
         except:
